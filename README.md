@@ -1,2 +1,2 @@
-# git
- Learning how to git
+# Trainnig
+ Learning how to write beautiful code
