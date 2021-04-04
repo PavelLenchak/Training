@@ -7,7 +7,7 @@ SIZE = (510, 510)
 SCREEN = pygame.display.set_mode(SIZE)
 IMG = pygame.image.load('Pygame trainnig\index.png')
 pygame.display.set_icon(IMG)
-pygame.display.set_caption('Cross zero')
+pygame.display.set_caption('Game board')
 
 RED = (255, 0, 0)
 WHITE = (255, 255, 255)
