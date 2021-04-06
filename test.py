@@ -8,6 +8,9 @@ class Character():
         self.damage = damage
         self.health = 100
 
+    def __str__(self):
+        return "The Character's race is {} and he has {} damage".format(self.race, self.damage)
+
     def hit(self, damage):
         self.health -= damage
         return self.health
@@ -17,9 +20,4 @@ class Character():
 
 
 c = Character('Elf')
-print(c.health)
-print(c.is_dead())
-
-c.hit(99)
-print(c.health)
-print(c.is_dead())
+print(c)
