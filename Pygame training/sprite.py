@@ -27,7 +27,14 @@ BG = pygame.image.load('Pygame training\\images\\bg.jpg').convert()
 CLOCK = pygame.time.Clock()
 FPS = 60
 
-ball = Ball(SCREEN_WEIGHT//2, 2, 'Pygame training\\images\\ball.png')
+# Использоваение sprite в группе объектов
+balls = pygame.sprite.Group()
+balls.add(Ball(SCREEN_WEIGHT//2, 2, 'Pygame training\\images\\ball.png'))
+balls.add(Ball(SCREEN_WEIGHT//2+250, 2, 'Pygame training\\images\\ball.png'),
+          Ball(SCREEN_WEIGHT//2-500, 2, 'Pygame training\\images\\ball.png'))
+# ball1 = Ball(SCREEN_WEIGHT//2, 2, 'Pygame training\\images\\ball.png')
+# ball2 = Ball(SCREEN_WEIGHT//2+250, 2, 'Pygame training\\images\\ball.png')
+# ball3 = Ball(SCREEN_WEIGHT//2-500, 2, 'Pygame training\\images\\ball.png')
 
 while True:
     for event in pygame.event.get():
@@ -36,9 +43,17 @@ while True:
             sys.exit(0)
 
     SCREEN.blit(BG, (0,0))
-    SCREEN.blit(ball.image, ball.rect)
+
+    # Прорисовываем группу мячиков
+    balls.draw(SCREEN)
+    # SCREEN.blit(ball1.image, ball1.rect)
+    # SCREEN.blit(ball2.image, ball2.rect)
+    # SCREEN.blit(ball3.image, ball3.rect)
     pygame.display.update()
 
     CLOCK.tick(FPS)
 
-    ball.update(SCREEN_HIGHT)
+    balls.update(SCREEN_HIGHT)
+    # ball1.update(SCREEN_HIGHT)
+    # ball2.update(SCREEN_HIGHT)
+    # ball3.update(SCREEN_HIGHT)
