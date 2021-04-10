@@ -30,7 +30,7 @@ def check_win(mas, sign):
 
 pygame.init()
 pygame.display.set_caption('Crosses and Zeroes')
-ICON = pygame.image.load('Pygame trainnig\index.png')
+ICON = pygame.image.load('Pygame training\Crosses zeroes\index.png')
 pygame.display.set_icon(ICON)
 
 SIZE_BLOCK = 200
