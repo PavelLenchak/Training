@@ -5,7 +5,7 @@ pygame.init()
 
 SIZE = (510, 510)
 SCREEN = pygame.display.set_mode(SIZE)
-IMG = pygame.image.load('Pygame trainnig\index.png')
+IMG = pygame.image.load('Pygame training\Crosses zeroes\index.png')
 pygame.display.set_icon(IMG)
 pygame.display.set_caption('Game board')
 
