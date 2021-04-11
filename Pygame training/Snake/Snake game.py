@@ -18,11 +18,13 @@ class Game():
         self.captiom = 'Snake'
         self.board_color = self.BLACK
 
+        self.board_sector = [[0]*self.count_block for i in range(self.count_block)]
+
         self.screen_w = self.screen_h = self.size_block*self.count_block + self.margin*(self.count_block+1)
         self.window = (self.screen_w, self.screen_h)
 
         self.fps_controller = pygame.time.Clock()
-        self.FPS = 30
+        self.FPS = 2
 
         # count food
         self.score = 0
@@ -39,21 +41,38 @@ class Game():
         pygame.display.set_caption(self.captiom)
         self.screen.fill(self.board_color)
 
+
+    def draw_the_game_board(self):
+        for row in range(self.count_block):
+            for column in range(self.count_block):
+                if (row + column) % 2 == 0:
+                    self.color = self.WHITE
+                else:
+                    self.color = self.BLUE
+
+                x = self.size_block * column + self.margin * (column + 1)
+                y = self.size_block * row + self.margin * (row + 1)
+                pygame.draw.rect(self.screen, self.color, (x, y, self.size_block, self.size_block))
+
     def event_loop(self, change_to):
         """ Отслеживание нажатий клавиш """
 
         for event in pygame.event.get():
-            if event.type == pygame.K_UP:
-                change_to = 'UP'
-            elif event.type == pygame.K_DOWN:
-                change_to = 'DOWN'
-            elif event.type == pygame.K_RIGHT:
-                change_to = 'RIGHT'
-            elif event.type == pygame.K_LEFT:
-                change_to = 'LEFT'
-            elif event.type == pygame.K_ESCAPE:
+            if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit(0)
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP or event.key == ord('w'):
+                    change_to = 'UP'
+                elif event.key == pygame.K_DOWN or event.key == ord('s'):
+                    change_to = 'DOWN'
+                elif event.key == pygame.K_RIGHT or event.key == ord('d'):
+                    change_to = 'RIGHT'
+                elif event.key == pygame.K_LEFT or event.key == ord('a'):
+                    change_to = 'LEFT'
+                elif event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                    sys.exit(0)
 
         return change_to
 
@@ -64,8 +83,7 @@ class Game():
     def show_score(self, status = 1):
         score_font = pygame.font.SysFont('monaco', 24)
         score_surf = score_font.render(
-            'Score: {}'.format(self.score), True, self.BLACK
-        )
+            'Score: {}'.format(self.score), True, self.BLACK)
         score_rect = score_surf.get_rect()
 
         if status == 1:
@@ -95,113 +113,53 @@ class Game():
 class Snake():
     def __init__(self, snake_color):
         self.snake_color = snake_color
-
-        self.snake_head_pos = [100, 50]
-        self.snake_body = [[100,50], [90,50], [80,50]]
         self.direction = 'RIGHT'
+        self.snake_speed = 1
+        self.x = self.y = 2
 
-        self.change_to = self.direction
+        self.chanched_to = self.direction
 
-    def check_direction_and_change(self):
-        if any(
-            self.change_to == 'UP' and not self.direction == 'DOWN',
-            self.change_to == 'DOWN' and not self.direction == 'UP',
-            self.change_to == 'RIGHT' and not self.direction == 'LEFT',
-            self.change_to == 'LEFT' and not self.direction == 'RIGHT',):
+    def draw_the_snake(self, x, y):
+        self.snake_pos_x = x * (game.margin + game.size_block)
+        self.snake_pos_y = y * (game.margin + game.size_block)
+        pygame.draw.rect(game.screen, 
+                        self.snake_color, 
+                        (self.snake_pos_x, self.snake_pos_y, game.size_block, game.size_block))
 
-            self.direction = self.change_to
+    def move_on(self):
+        
+        if self.chanched_to == 'UP':
+            self.y -= self.snake_speed
+        elif self.chanched_to == 'DOWN':
+            self.y += self.snake_speed
+        elif self.chanched_to == 'RIGHT':
+            self.x += self.snake_speed
+        elif self.chanched_to == 'LEFT':
+            self.x -= self.snake_speed
 
-    def change_head_postion(self):
-        if self.direction == 'UP':
-            self.snake_head_pos[1] -= 10
-        elif self.direction == 'DOWN':
-            self.snake_head_pos[1] += 10
-        elif self.direction == 'LEFT':
-            self.snake_head_pos[0] -= 10 
-        elif self.direction == 'RIGHT':
-            self.snake_head_pos[0] += 10 
-
-
-    def snake_body_mechnism(self, score, food_pos, screen_width, screen_hight):
-
-        self.snake_body = (0, list(self.snake_head_pos))
-
-        if self.snake_head_pos[0] == food_pos[0] and self.snake_head_pos[1] == food_pos[1]:
-            
-            food_pos = [
-                random.randrange(1, screen_width/10)*10,
-                random.randrange(1, screen_hight/10)*10
-            ]
-            score += 1
-        else:
-            self.snake_body.pop()
-
-        return score, food_pos
-
-    
-    def draw_snake(self, play_surface, surface_color):
-        play_surface.fill(surface_color)
-
-        for pos in self.snake_body:
-            pygame.draw.rect(
-                play_surface, self.snake_color, pygame.Rect(
-                    pos[0], pos[1], 10, 10)
-            )
-
-    def check_for_bounderies(self, game_over, screen_width, screen_height):
-        if any((
-                self.snake_head_pos[0] > screen_width-10 or self.snake_head_pos[0] < 0,
-                self.snake_head_pos[1] > screen_height-10 or self.snake_head_pos[1] < 0
-                    )):
-                game_over()
-        for block in self.snake_body[1:]:
-            # проверка на то, что первый элемент(голова) врезался в
-            # любой другой элемент змеи (закольцевались)
-            if (block[0] == self.snake_head_pos[0] and
-                    block[1] == self.snake_head_pos[1]):
-                game_over()
+        snake.draw_the_snake(self.x, self.y)
 
 
 class Food():
-        def __init__(self, food_color, screen_width, screen_height):
-            """Инит еды"""
-            self.food_color = food_color
-            self.food_size_x = 10
-            self.food_size_y = 10
-            self.food_pos = [random.randrange(1, screen_width/10)*10,
-                            random.randrange(1, screen_height/10)*10]
-            
-            print('OOOOOOOOOOOOOO {}'.format(self.food_pos))
-
-        def draw_food(self, play_surface):
-            """Отображение еды"""
-            pygame.draw.rect(
-                play_surface, self.food_color, pygame.Rect(
-                    self.food_pos[0], self.food_pos[1],
-                    self.food_size_x, self.food_size_y))
+    pass
 
 
 game = Game()
 snake = Snake(game.GREEN)
-food = Food(game.RED, game.screen_w, game.screen_h)
 
 game.init_and_check_errors()
 game.set_surface_and_title()
 
-done = False
-while not done:
-    snake.change_to = game.event_loop(snake.change_to)
 
-    snake.validate_direction_and_change()
-    snake.change_head_position()
-    game.score, food.food_pos = snake.snake_body_mechanism(
-        game.score, food.food_pos, game.screen_width, game.screen_height)
-    snake.draw_snake(game.play_surface, game.white)
+while True:
+    game.draw_the_game_board()
 
-    food.draw_food(game.play_surface)
+    snake.chanched_to = game.event_loop(snake.chanched_to)
+    print(snake.chanched_to)
 
-    snake.check_for_boundaries(
-        game.game_over, game.screen_width, game.screen_height)
+    snake.move_on()
 
-    game.show_score()
     game.refresh_screen()
+
+pygame.quit()
+    
