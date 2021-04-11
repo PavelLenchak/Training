@@ -14,17 +14,18 @@ class Game():
 
         self.size_block = 15
         self.margin = 1
+        self.under_margin = 70
         self.count_block = 30
         self.captiom = 'Snake'
         self.board_color = self.BLACK
 
-        self.board_sector = [[0]*self.count_block for i in range(self.count_block)]
+        self.board_sector = [[0]*self.count_block for _ in range(self.count_block)]
 
         self.screen_w = self.screen_h = self.size_block*self.count_block + self.margin*(self.count_block+1)
-        self.window = (self.screen_w, self.screen_h)
+        self.window = (self.screen_w, self.screen_h + self.under_margin)
 
         self.fps_controller = pygame.time.Clock()
-        self.FPS = 2
+        self.FPS = 30
 
         # count food
         self.score = 0
@@ -42,6 +43,12 @@ class Game():
         self.screen.fill(self.board_color)
 
 
+    def draw_the_blocks(self, color, row, column):
+        x = self.size_block * column + self.margin * (column + 1)
+        y = self.size_block * row + self.margin * (row + 1)
+        pygame.draw.rect(self.screen, color, (x, y, self.size_block, self.size_block))
+
+
     def draw_the_game_board(self):
         for row in range(self.count_block):
             for column in range(self.count_block):
@@ -50,9 +57,8 @@ class Game():
                 else:
                     self.color = self.BLUE
 
-                x = self.size_block * column + self.margin * (column + 1)
-                y = self.size_block * row + self.margin * (row + 1)
-                pygame.draw.rect(self.screen, self.color, (x, y, self.size_block, self.size_block))
+                game.draw_the_blocks(self.color, row, column)
+                
 
     def event_loop(self, change_to):
         """ Отслеживание нажатий клавиш """
@@ -114,17 +120,14 @@ class Snake():
     def __init__(self, snake_color):
         self.snake_color = snake_color
         self.direction = 'RIGHT'
-        self.snake_speed = 1
-        self.x = self.y = 2
+        self.snake_speed = 0.5
+        self.x = 2
+        self.y = 2
+        self.snake_pos = [
+            [self.x, self.y]
+        ]
 
         self.chanched_to = self.direction
-
-    def draw_the_snake(self, x, y):
-        self.snake_pos_x = x * (game.margin + game.size_block)
-        self.snake_pos_y = y * (game.margin + game.size_block)
-        pygame.draw.rect(game.screen, 
-                        self.snake_color, 
-                        (self.snake_pos_x, self.snake_pos_y, game.size_block, game.size_block))
 
     def move_on(self):
         
@@ -137,7 +140,10 @@ class Snake():
         elif self.chanched_to == 'LEFT':
             self.x -= self.snake_speed
 
-        snake.draw_the_snake(self.x, self.y)
+        self.snake_pos.append([self.x, self.y])
+        for block in self.snake_pos:
+            x, y = block[0], block[1]
+            game.draw_the_blocks(self.snake_color, x, y)
 
 
 class Food():
@@ -155,11 +161,10 @@ while True:
     game.draw_the_game_board()
 
     snake.chanched_to = game.event_loop(snake.chanched_to)
-    print(snake.chanched_to)
+    #print(snake.chanched_to)
 
     snake.move_on()
 
     game.refresh_screen()
 
-pygame.quit()
     
