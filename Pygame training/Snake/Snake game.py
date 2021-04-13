@@ -14,7 +14,7 @@ class Game():
 
         self.size_block = 20
         self.margin = 1
-        self.under_margin = 70
+        self.under_margin = 25
         self.count_block = 20
         self.captiom = 'Snake'
         self.board_color = self.BLACK
@@ -89,11 +89,11 @@ class Game():
     def show_score(self, status = 1):
         score_font = pygame.font.SysFont('monaco', 24)
         score_surf = score_font.render(
-            'Score: {}'.format(self.score), True, self.BLACK)
+            'Score: {}'.format(self.score), True, self.BLUE)
         score_rect = score_surf.get_rect()
 
         if status == 1:
-            score_rect.midtop = (10,10)
+            score_rect.midtop = (self.screen_w//2, self.screen_h * 0.999)
         else:
             score_rect.midtop = (self.screen_w//2, self.screen_h//2)
 
@@ -101,9 +101,10 @@ class Game():
 
 
     def game_over(self):
+        self.screen.fill(self.BLACK)
         game_over_font = pygame.font.SysFont('monaco', 30)
         game_over_surf = game_over_font.render(
-            'GAME OVER', True, self.BLACK
+            'GAME OVER', True, self.BLUE
         )
         game_over_rect = game_over_surf.get_rect()
         game_over_rect.midtop = ((self.screen_w//2, self.screen_h//2 - 50))
@@ -122,18 +123,31 @@ class Snake():
         self.direction = 'RIGHT'
         self.snake_speed = 1
         self.x = 3
-        self.y = 4
+        self.y = 3
         self.snake_pos = [
+            [self.x+1, self.y],
             [self.x, self.y],
-            [self.x-1, self.y],
-            [self.x-2, self.y],
-            [self.x-3, self.y],
         ]
 
         self.chanched_to = self.direction
+    
+
+    def check_crash(self):
+
+        # Столкновение со стенкой
+        if not -1 <= self.x <= game.count_block or not -1 <= self.y <= game.count_block:
+            game.game_over()
+
+        # Столкновение с телом
+        for block in self.snake_pos[1:]:
+            if (block[0] == self.snake_pos[0][0] and 
+                block[1] == self.snake_pos[0][1]):
+                game.game_over()
+
 
     def move_on(self):
         
+        # Двигаемся в сторону
         if self.chanched_to == 'UP':
             self.y -= self.snake_speed
         elif self.chanched_to == 'DOWN':
@@ -146,9 +160,13 @@ class Snake():
         for block in self.snake_pos:
             x, y = block[0], block[1]
             game.draw_the_blocks(self.snake_color, x, y)
+
         self.snake_pos.append([self.x, self.y])
         self.snake_pos = self.snake_pos[1:]
 
+        # Проверяем столкновение со стенкой или с телом змейки
+        self.check_crash()
+        
 
 class Food():
     pass
@@ -163,6 +181,7 @@ game.set_surface_and_title()
 
 while True:
     game.draw_the_game_board()
+    game.show_score()
 
     snake.chanched_to = game.event_loop(snake.chanched_to)
     #print(snake.chanched_to)
