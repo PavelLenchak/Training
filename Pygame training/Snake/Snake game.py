@@ -12,14 +12,12 @@ class Game():
         self.GREEN = (0,255,0)
         self.BLUE =(0,244,204)
 
-        self.size_block = 20
+        self.size_block = 30
         self.margin = 1
         self.under_margin = 25
         self.count_block = 20
         self.captiom = 'Snake'
         self.board_color = self.BLACK
-
-        self.board_sector = [[0]*self.count_block for _ in range(self.count_block)]
 
         self.screen_w = self.screen_h = self.size_block*self.count_block + self.margin*(self.count_block+1)
         self.window = (self.screen_w, self.screen_h + self.under_margin)
@@ -83,13 +81,13 @@ class Game():
         return change_to
 
     def refresh_screen(self):
-        pygame.display.update()
+        pygame.display.flip()
         self.fps_controller.tick(self.FPS)
 
     def show_score(self, status = 1):
-        score_font = pygame.font.SysFont('monaco', 24)
+        score_font = pygame.font.SysFont('monaco', 36)
         score_surf = score_font.render(
-            'Score: {}'.format(self.score), True, self.BLUE)
+            'Score: {0}'.format(self.score), True, self.WHITE, self.BLACK)
         score_rect = score_surf.get_rect()
 
         if status == 1:
@@ -102,7 +100,7 @@ class Game():
 
     def game_over(self):
         self.screen.fill(self.BLACK)
-        game_over_font = pygame.font.SysFont('monaco', 30)
+        game_over_font = pygame.font.SysFont('KOYSAN', 30)
         game_over_surf = game_over_font.render(
             'GAME OVER', True, self.BLUE
         )
@@ -112,7 +110,7 @@ class Game():
 
         self.show_score(0)
         pygame.display.update()
-        time.sleep(4)
+        time.sleep(1)
         pygame.quit()
         sys.exit(0)
 
@@ -122,10 +120,9 @@ class Snake():
         self.snake_color = snake_color
         self.direction = 'RIGHT'
         self.snake_speed = 1
-        self.x = 3
-        self.y = 3
+        self.x = 10
+        self.y = 10
         self.snake_pos = [
-            [self.x+1, self.y],
             [self.x, self.y],
         ]
 
@@ -144,21 +141,35 @@ class Snake():
                 block[1] == self.snake_pos[0][1]):
                 game.game_over()
 
+        
+    def check_eat(self):
+        if self.snake_pos[0][0] == food.food_pos[0] and self.snake_pos[0][1] == food.food_pos[1]:
+            game.score += 1
+            snake.snake_pos.append(food.food_pos)
+            food.food_pos = [random.randint(1, game.count_block-1),
+                            random.randint(1, game.count_block-1)]
+            print('YUMMY')
+            
 
     def move_on(self):
-        
+        if any((self.direction == 'UP' and not self.chanched_to == 'DOWN',
+                self.direction == 'DOWN' and not self.chanched_to == 'UP',
+                self.direction == 'RIGHT' and not self.chanched_to == 'LEFT',
+                self.direction == 'LEFT' and not self.chanched_to == 'RIGHT')):
+            self.direction = self.chanched_to
+
         # Двигаемся в сторону
-        if self.chanched_to == 'UP':
+        if self.direction == 'UP':
             self.y -= self.snake_speed
-        elif self.chanched_to == 'DOWN':
+        elif self.direction == 'DOWN':
             self.y += self.snake_speed
-        elif self.chanched_to == 'RIGHT':
+        elif self.direction == 'RIGHT':
             self.x += self.snake_speed
-        elif self.chanched_to == 'LEFT':
+        elif self.direction == 'LEFT':
             self.x -= self.snake_speed
 
         for block in self.snake_pos:
-            x, y = block[0], block[1]
+            x, y = block
             game.draw_the_blocks(self.snake_color, x, y)
 
         self.snake_pos.append([self.x, self.y])
@@ -166,14 +177,22 @@ class Snake():
 
         # Проверяем столкновение со стенкой или с телом змейки
         self.check_crash()
+        self.check_eat()
         
 
 class Food():
-    pass
+    def __init__(self, food_color):
+        self.food_color = food_color
+        self.food_pos = [random.randint(1, game.count_block-1),
+                        random.randint(1, game.count_block-1)]
+
+    def draw_food(self):
+        game.draw_the_blocks(self.food_color, self.food_pos[0], self.food_pos[1])
 
 
 game = Game()
 snake = Snake(game.GREEN)
+food = Food(game.RED)
 
 game.init_and_check_errors()
 game.set_surface_and_title()
@@ -181,13 +200,14 @@ game.set_surface_and_title()
 
 while True:
     game.draw_the_game_board()
-    game.show_score()
-
+    
     snake.chanched_to = game.event_loop(snake.chanched_to)
-    #print(snake.chanched_to)
-
     snake.move_on()
+    print(snake.snake_pos)
 
+    food.draw_food()
+
+    game.show_score()
     game.refresh_screen()
 
     
