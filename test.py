@@ -1,3 +1,5 @@
+import numpy as np
+
 '''
 module for testing
 '''
@@ -20,4 +22,7 @@ class Character():
 
 
 c = Character('Elf')
-print(c)
+
+my_list = [-1,0,4,2,1,2]
+answer = np.median(my_list)
+print(answer)
