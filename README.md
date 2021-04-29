@@ -1,2 +1,2 @@
-# Trainnig
- Learning how to write beautiful code
+# Python Code
+ Примеры выполнения проектов на Python
