@@ -21,7 +21,7 @@ def save_csv(items, path):
     pass
 
 def get_html(url, params=''):
-    driver = webdriver.PhantomJS(executable_path='D:\\Python\\git\\Parsing\\nifrygateway\\niftygateway.py')
+    driver = webdriver.PhantomJS()
     driver.get(url)
     p_element = driver.find_element_by_class_name(id_='MuiCollapse-wrapperInner')
     print(p_element.text)
