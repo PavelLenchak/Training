@@ -5,10 +5,12 @@ from fake_useragent import UserAgent
 
 EDITIONS_F_CSV = 'editions_first.csv'
 EDITIONS_S_CSV = 'editions_second.csv'
+NIFTY = 'nifty.csv'
 EVENTS_CSV = 'events.csv'
 
 OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
 QUERY_REQ= 'https://api.niftygateway.com//already_minted_nifties/?searchQuery=%3Fpage%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:1,%22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D'
+NIFTY_REQ ='https://api.niftygateway.com//market/nifty-history-by-type/'
 HEADERS = {
     'user-agent': UserAgent().chrome
 }
@@ -26,7 +28,7 @@ def get_total_pages():
     return total_pages
 
 
-def get_first_edition(items, type=''):
+def get_first_edition(items):
     main_datas = []
     for item in items:
         main_datas.append(
@@ -54,13 +56,13 @@ def get_niftys(items):
                 'Contract Address': item['niftyContractAddress'],
             }
         )
-    # проверяем данные
-    # for nift in niftys:
-    #     print(nift, sep='\n')
+    #проверяем данные
+    for nift in niftys:
+        print(nift, sep='\n')
     # for item in items[0]['nifties']:
     #     print(item['niftyTitle'])
     #print(items[0]['nifties'])
-    return niftys
+    #return niftys
 
         
 def get_sec_edition(items):
@@ -119,17 +121,7 @@ def niftys():
     datas = []
     items = get_html(OPEN_REQ)
     datas.extend(get_niftys(items))
-
-    with open(EDITIONS_F_CSV, 'w', newline='') as csv_file:
-        writer = csv.writer(csv_file, delimiter=';')
-        writer.writerow(titels)
-        for item in datas:
-            writer.writerow([
-                item['Edition Name'], 
-                item['Edition Type'], 
-                item['Edition Total Size'], 
-                item['Contract Address']
-                ])
+    save_csv(datas, NIFTY, titels)
 
 
 #editions.csv
@@ -150,9 +142,15 @@ def editions_second():
         datas.extend(get_sec_edition(items_query))
         save_csv(datas, EDITIONS_S_CSV, titels)
 
-print('start EDITION FIRST')
-edition_first()
+def main():
+    # print('start EDITION FIRST')
+    # edition_first()
 
-print('start EDITION SECOND')
-editions_second()
-print('END')
+    print('start EVENTS')
+    niftys()
+
+    # print('start EDITION SECOND')
+    # editions_second()
+    # print('END')
+
+main()
