@@ -1,4 +1,5 @@
 import sys
+import datetime
 import requests
 from bs4 import BeautifulSoup
 import csv
@@ -102,7 +103,7 @@ def editions_second():
     datas = []
     total_pages = get_total_pages()
     print(f'Всего страниц {total_pages}')
-    for page in range(1, 2):
+    for page in range(1, total_pages+1):
         print(f'Парсим страницу {page}')
         items_query= get_html(QUERY_REQ, params={'current':page})
         datas.extend(get_sec_edition(items_query))
@@ -168,10 +169,13 @@ def events():
                 # nifty_transfer - sent
                 # sale - bought
 
+                #2013-07-12T07:00:00Z datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S.%f')
+                r_time = d['Timestamp'].replace('T', ' ').replace('Z', '')
+                time = datetime.datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S.%f')
+                
                 if action == 'offer':
                     id = d['id']
                     token_id = d['UnmintedNiftyObj']['niftyTitle']
-                    time = d['Timestamp']
                     user1 = d['ListingUserProfile']['name']
                     user2 = 'None'
                     user1_id = d['ListingUserProfile']['id']
@@ -180,7 +184,6 @@ def events():
                 elif action == 'listing':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    time = d['Timestamp']
                     user1 = d['ListingUserProfile']['name']
                     user2 = 'None'
                     user1_id = d['ListingUserProfile']['id']
@@ -189,7 +192,6 @@ def events():
                 elif action == 'birth':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    time = d['Timestamp']
                     user1 = d['BirthingUserProfile']['name']
                     user2 = 'None'
                     user1_id = d['BirthingUserProfile']['id']
@@ -198,7 +200,6 @@ def events():
                 elif action == 'withdrawal':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    time = d['Timestamp']
                     user1 = d['WithdrawingUserProfile']['name']
                     user2 = 'None'
                     user1_id = d['WithdrawingUserProfile']['id']
@@ -207,7 +208,6 @@ def events():
                 elif action == 'nifty_transfer':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    time = d['Timestamp']
                     user1 = d['SendingUserProfile']['name']
                     user2 = d['ReceivingUserProfile']['name']
                     user1_id = d['SendingUserProfile']['id']
@@ -216,7 +216,6 @@ def events():
                 elif action == 'sale':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    time = d['Timestamp']
                     user1 = d['SellingUserProfile']['name']
                     user2 = d['PurchasingUserProfile']['name']
                     user1_id = d['SellingUserProfile']['id']
@@ -226,7 +225,6 @@ def events():
                     print(action)
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    time = d['Timestamp']
                     user1 = d['ListingUserProfile']['name']
                     user2 = 'None'
                     user1_id = d['ListingUserProfile']['id']
@@ -239,6 +237,8 @@ def events():
                     'DateTime': time,
                     'User 1': user1,
                     'User 2': user2,
+                    'User 1 ID': user1_id,
+                    'User 2 ID': user2_id,
                     'Action': types[action],
                     'Price': price
                 })
