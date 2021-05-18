@@ -129,7 +129,9 @@ def events():
     data = response.json()
 
     total_pages = data['data']['meta']['page']['total_pages']
+    print(f'Всего страниц {total_pages}')
     for page in range(1, total_pages):
+        print(f'Парсим {page} страницу')
         response = requests.post(events_request, data={
             "contractAddress":"0x68c4dd3f302c449be39af528d56c6bd242b8cedb",
             "niftyType":3,
@@ -141,20 +143,78 @@ def events():
         for d in data['data']['results']:
             #print(d, sep='\n')
             action = d['Type']
-            time = d['Timestamp']
+            time = ''
+            user1 = ''
+            user2 = ''
+            price = ''
+            
+            # TYPES
+            # listing - put
+            # birth - has been deposited into Nifty Gateway by
+            # offer - made a global offer for
+            # withdrawal - withdrew
+            # nifty_transfer - sent
+            # sale - bought
 
-            if action != 'offer':
+            if action == 'offer':
+                id = d['id']
+                token_id = 'None'
+                time = d['Timestamp']
+                user1 = d['ListingUserProfile']['name']
+                user2 = 'None'
+                price = d['OfferAmountInCents'] * 0.01
+            elif action == 'listing':
                 id = d['NiftyObject']['id']
                 token_id = d['NiftyObject']['tokenId']
+                time = d['Timestamp']
+                user1 = d['ListingUserProfile']['name']
+                user2 = 'None'
+                price = d['ListingAmountInCents'] * 0.01
+            elif action == 'birth':
+                id = d['NiftyObject']['id']
+                token_id = d['NiftyObject']['tokenId']
+                time = d['Timestamp']
+                user1 = d['BirthingUserProfile']['name']
+                user2 = 'None'
+                price = 'None'
+            elif action == 'withdrawal':
+                id = d['NiftyObject']['id']
+                token_id = d['NiftyObject']['tokenId']
+                time = d['Timestamp']
+                user1 = d['WithdrawingUserProfile']['name']
+                user2 = 'None'
+                price = 'None'
+            elif action == 'nifty_transfer':
+                id = d['NiftyObject']['id']
+                token_id = d['NiftyObject']['tokenId']
+                time = d['Timestamp']
+                user1 = d['SendingUserProfile']['name']
+                user2 = d['ReceivingUserProfile']['name']
+                price = 'None'
+            elif action == 'sale':
+                id = d['NiftyObject']['id']
+                token_id = d['NiftyObject']['tokenId']
+                time = d['Timestamp']
+                user1 = d['SellingUserProfile']['name']
+                user2 = d['PurchasingUserProfile']['name']
+                price = d['SaleAmountInCents'] * 0.01
             else:
-                id = 'None'
-                token_id = 'None'
+                print(action)
+                id = d['NiftyObject']['id']
+                token_id = d['NiftyObject']['tokenId']
+                time = d['Timestamp']
+                user1 = d['ListingUserProfile']['name']
+                user2 = 'None'
+                price = d['ListingAmountInCents'] * 0.01
 
             main_data.append({
-                'Action': action,
-                'Time': time,
                 'ID': id,
                 'Token ID': token_id,
+                'DateTime': time,
+                'User 1': user1,
+                'User 2': user2,
+                'Action': action,
+                'Price': price
             })
             titels = list(main_data[0].keys())
             save_csv(main_data, EVENTS_CSV, titels)
@@ -164,6 +224,14 @@ def events():
 
     # for key, value in data['data']['results'][0].items():
     #     print(f'{key}: {value}')
+
+# TYPES
+# listing - put
+# birth - has been deposited into Nifty Gateway by
+# offer - made a global offer for
+# withdrawal - withdrew
+# nifty_transfer - sent
+# sale - bought
 
 def main():
     # edition_first()
