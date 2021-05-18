@@ -3,9 +3,8 @@ from bs4 import BeautifulSoup
 import csv
 from fake_useragent import UserAgent
 
-EDITIONS_F_CSV = 'editions_first.csv'
-EDITIONS_S_CSV = 'editions_second.csv'
-NIFTY = 'nifty.csv'
+EDITIONS_F_CSV = 'Parsing\\nifrygateway\\editions_first.csv'
+EDITIONS_S_CSV = 'Parsing\\nifrygateway\\editions_second.csv'
 EVENTS_CSV = 'events.csv'
 
 OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
@@ -29,40 +28,30 @@ def get_total_pages():
 
 
 def get_first_edition(items):
-    main_datas = []
+    niftys = []
     for item in items:
-        main_datas.append(
-            {
-                'Artist': item['userProfile']['name'],
-                'Collection Name': item['storeName'],
-                'Collection Type': item['template'],
-                'Contract Address': item['contractAddress'],
-            }
-        )
+        for nifty in item['nifties']:
+            niftys.append(
+                {
+                    'Artist': item['userProfile']['name'],
+                    'Collection Name': item['storeName'],
+                    'Collection Type': item['template'],
+                    'Edition Name': nifty['niftyTitle'],
+                    'Edition Type': nifty['niftyType'],
+                    'Edition Total Size': nifty['niftyTotalNumOfEditions'],
+                    'Contract Address': nifty['niftyContractAddress'],
+                }
+            )
     # проверяем данные
     # for data in main_datas:
     #     print(data, sep='\n')
-    return main_datas
 
-
-def get_niftys(items):
-    niftys = []
-    for item in items[0]['nifties']:
-        niftys.append(
-            {
-                'Edition Name': item['niftyTitle'],
-                'Edition Type': item['niftyType'],
-                'Edition Total Size': item['niftyTotalNumOfEditions'],
-                'Contract Address': item['niftyContractAddress'],
-            }
-        )
     #проверяем данные
-    for nift in niftys:
-        print(nift, sep='\n')
+    # for nift in niftys:
+    #     print(nift, sep='\n')
     # for item in items[0]['nifties']:
     #     print(item['niftyTitle'])
-    #print(items[0]['nifties'])
-    #return niftys
+    return niftys
 
         
 def get_sec_edition(items):
@@ -93,35 +82,25 @@ def save_csv(items, path, titels):
         writer = csv.writer(csv_file, delimiter=';')
         writer.writerow(titels)
         for item in items:
-            writer.writerow([
-                item[titels[0]], 
-                item[titels[1]], 
-                item[titels[2]], 
-                item[titels[3]]
-                ])
+            test = [item[titels[i]] for i in range(len(titels))]
+            writer.writerow(
+                test
+                )
+
 
 def edition_first():
     titels = [
         'Artist', 
         'Collection Name', 
         'Collection Type', 
-        'Contract Address']
-    datas = []
-    items = get_html(OPEN_REQ)
-    datas.extend(get_first_edition(items))
-    save_csv(datas, EDITIONS_F_CSV, titels)
-
-
-def niftys():
-    titels = [
         'Edition Name', 
         'Edition Type', 
         'Edition Total Size', 
         'Contract Address']
     datas = []
     items = get_html(OPEN_REQ)
-    datas.extend(get_niftys(items))
-    save_csv(datas, NIFTY, titels)
+    datas.extend(get_first_edition(items))
+    save_csv(datas, EDITIONS_F_CSV, titels)
 
 
 #editions.csv
@@ -136,21 +115,18 @@ def editions_second():
     datas = []
     total_pages = get_total_pages()
     print(f'Всего страниц {total_pages}')
-    for page in range(1, 4):
+    for page in range(1, 3):
         print(f'Парсим страницу {page}')
         items_query= get_html(QUERY_REQ, params={'current':page})
         datas.extend(get_sec_edition(items_query))
         save_csv(datas, EDITIONS_S_CSV, titels)
 
 def main():
-    # print('start EDITION FIRST')
-    # edition_first()
+    print('start EDITION FIRST')
+    edition_first()
 
-    print('start EVENTS')
-    niftys()
-
-    # print('start EDITION SECOND')
-    # editions_second()
-    # print('END')
+    print('start EDITION SECOND')
+    editions_second()
+    print('END')
 
 main()
