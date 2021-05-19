@@ -3,6 +3,7 @@ from datetime import datetime
 import requests
 import csv
 from fake_useragent import UserAgent
+from multiprocessing import Pool
 
 EDITIONS_F_CSV = 'Parsing\\nifrygateway\\editions_first.csv'
 EDITIONS_S_CSV = 'Parsing\\nifrygateway\\editions_second.csv'
@@ -27,9 +28,9 @@ def get_total_pages():
 
 
 def save_csv(items, path, titels):
-    with open(path, 'w', newline='', encoding='utf-8') as csv_file:
+    with open(path, 'a', newline='', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
-        writer.writerow(titels)
+        #writer.writerow(titels)
         for item in items:
             task = [item[titels[i]] for i in range(len(titels))]
             writer.writerow(task)
@@ -69,8 +70,9 @@ def get_first_edition(items):
     return niftys
 
         
-def get_sec_edition(items):
+def get_sec_edition(items, page):
     datas = []
+    print('Scrapping #{}'.format(page))
     for item in items['data']['results']:
         # Выдергиваем число между # и / - есть не во всех названиях
         ed_number = item['name'][item['name'].find('#'):item['name'].find('/')]
@@ -101,17 +103,13 @@ def edition_first():
     save_csv(datas, EDITIONS_F_CSV, titels)
 
 
-def editions_second():
-    print('start EDITION SECOND')
+def editions_second(page):
     datas = []
-    total_pages = get_total_pages()
-    print(f'Всего страниц {total_pages}')
-    for page in range(1, total_pages+1):
-        print(f'Парсим страницу {page}')
-        items_query= get_html(QUERY_REQ, params={'current':page})
-        datas.extend(get_sec_edition(items_query))
-        titels = list(datas[0].keys())
-        save_csv(datas, EDITIONS_S_CSV, titels)
+
+    items_query= get_html(QUERY_REQ, params={'current':page})
+    datas.extend(get_sec_edition(items_query, page))
+    titels = list(datas[0].keys())
+    save_csv(datas, EDITIONS_S_CSV, titels)
 
 
 def events():
@@ -139,8 +137,8 @@ def events():
         for page in range(1, total_pages+1):
             print(f'Парсим {page} страницу')
             response = requests.post(events_request, data={
-                "contractAddress":"0x68c4dd3f302c449be39af528d56c6bd242b8cedb",
-                "niftyType":3,
+                "contractAddress":at['Contract Address'],
+                "niftyType":at['Edition Type'],
                 "current":page,
                 "size":10,
                 "onlySales":"false"})
@@ -164,86 +162,70 @@ def events():
                     'nifty_transfer': 'sent',
                     'sale': 'bought',
                 }
-                
-                # TYPES
-                # listing - put
-                # birth - has been deposited into Nifty Gateway by
-                # offer - made a global offer for
-                # withdrawal - withdrew
-                # nifty_transfer - sent
-                # sale - bought
 
                 #2013-07-12T07:00:00Z datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S.%f')
                 r_time = d['Timestamp'].replace('T', ' ').replace('Z', '')
                 time = datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S.%f')
                 
-                try:
-                    if action == 'offer':
-                        id = d['id']
-                        token_id = d['UnmintedNiftyObj']['niftyTitle']
-                        user1 = d['ListingUserProfile']['name']
-                        user2 = 'None'
-                        user1_id = d['ListingUserProfile']['id']
-                        user2_id = 'None'
-                        price = d['OfferAmountInCents'] * 0.01
-                    elif action == 'listing':
-                        id = d['NiftyObject']['id']
-                        token_id = d['NiftyObject']['tokenId']
-                        user1 = d['ListingUserProfile']['name']
-                        user2 = 'None'
-                        user1_id = d['ListingUserProfile']['id']
-                        user2_id = 'None'
-                        price = d['ListingAmountInCents'] * 0.01
-                    elif action == 'birth':
-                        id = d['NiftyObject']['id']
-                        token_id = d['NiftyObject']['tokenId']
-                        user1 = d['BirthingUserProfile']['name']
-                        user2 = 'None'
-                        user1_id = d['BirthingUserProfile']['id']
-                        user2_id = 'None'
-                        price = 'None'
-                    elif action == 'withdrawal':
-                        id = d['NiftyObject']['id']
-                        token_id = d['NiftyObject']['tokenId']
-                        user1 = d['WithdrawingUserProfile']['name']
-                        user2 = 'None'
-                        user1_id = d['WithdrawingUserProfile']['id']
-                        user2_id = 'None'
-                        price = 'None'
-                    elif action == 'nifty_transfer':
-                        id = d['NiftyObject']['id']
-                        token_id = d['NiftyObject']['tokenId']
-                        user1 = d['SendingUserProfile']['name']
-                        user2 = d['ReceivingUserProfile']['name']
-                        user1_id = d['SendingUserProfile']['id']
-                        user2_id = d['ReceivingUserProfile']['id']
-                        price = 'None'
-                    elif action == 'sale':
-                        id = d['NiftyObject']['id']
-                        token_id = d['NiftyObject']['tokenId']
-                        user1 = d['SellingUserProfile']['name']
-                        user2 = d['PurchasingUserProfile']['name']
-                        user1_id = d['SellingUserProfile']['id']
-                        user2_id = d['PurchasingUserProfile']['id']
-                        price = d['SaleAmountInCents'] * 0.01
-                    else:
-                        print(action)
-                        id = d['NiftyObject']['id']
-                        token_id = d['NiftyObject']['tokenId']
-                        user1 = d['ListingUserProfile']['name']
-                        user2 = 'None'
-                        user1_id = d['ListingUserProfile']['id']
-                        user2_id = 'None'
-                        price = d['ListingAmountInCents'] * 0.01
-                except:
+
+                if action == 'offer':
+                    id = 'None' #d['id']
+                    token_id = 'None'
+                    user1 = d['ListingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['ListingUserProfile']['id']
+                    user2_id = 'None'
+                    price = d['OfferAmountInCents'] * 0.01
+                elif action == 'listing':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['ListingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['ListingUserProfile']['id']
+                    user2_id = 'None'
+                    price = d['ListingAmountInCents'] * 0.01
+                elif action == 'birth':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['BirthingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['BirthingUserProfile']['id']
+                    user2_id = 'None'
+                    price = 'None'
+                elif action == 'withdrawal':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['WithdrawingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['WithdrawingUserProfile']['id']
+                    user2_id = 'None'
+                    price = 'None'
+                elif action == 'nifty_transfer':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['SendingUserProfile']['name']
+                    user2 = d['ReceivingUserProfile']['name']
+                    user1_id = d['SendingUserProfile']['id']
+                    user2_id = d['ReceivingUserProfile']['id']
+                    price = 'None'
+                elif action == 'sale':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['SellingUserProfile']['name']
+                    user2 = d['PurchasingUserProfile']['name']
+                    user1_id = d['SellingUserProfile']['id']
+                    user2_id = d['PurchasingUserProfile']['id']
+                    price = d['SaleAmountInCents'] * 0.01
+                else:
                     print(action)
-                    id = 'Error'
-                    token_id = 'Error'
-                    user1 = 'Error'
-                    user2 = 'Error'
-                    user1_id = 'Error'
-                    user2_id = 'Error'
-                    price = 'Error'
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['ListingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['ListingUserProfile']['id']
+                    user2_id = 'None'
+                    price = d['ListingAmountInCents'] * 0.01
+
 
                 main_data.append({
                     'ID': id,
@@ -270,11 +252,17 @@ def main():
     start = datetime.now()
 
     # editins.csv
-    edition_first()
-    #editions_second()
+    #edition_first()
 
-    # events.csv
-    events()
+    # total_pages = list(range(1, get_total_pages()+1))
+    # with Pool(20) as p:
+    #     p.map(editions_second, list(range(1,20)))
+    editions_second(1)
+
+
+    # # events.csv
+    # with Pool(40) as p:
+    #     p.map(events, [])
 
     end = datetime.now()
     total = end - start
