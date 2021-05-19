@@ -1,4 +1,5 @@
 import sys
+from time import sleep
 from datetime import datetime
 import requests
 import csv
@@ -108,19 +109,29 @@ def edition_first():
 
 def editions_second(page):
     datas = []
-
-    items_query= get_html(QUERY_REQ, params={'current':page})
-    datas.extend(get_sec_edition(items_query, page))
-    titels = list(datas[0].keys())
-    save_csv(datas, EDITIONS_S_CSV, titels)
-
+    try:
+        items_query= get_html(QUERY_REQ, params={'current':page})
+        datas.extend(get_sec_edition(items_query, page))
+        titels = list(datas[0].keys())
+        save_csv(datas, EDITIONS_S_CSV, titels)
+    except:
+        detail = items_query['detail']
+        if 'Request was throttled.' in detail:
+            t = int(detail[-10])
+            print(t)
+            sleep(t)
+            items_query= get_html(QUERY_REQ, params={'current':page})
+            datas.extend(get_sec_edition(items_query, page))
+            titels = list(datas[0].keys())
+            save_csv(datas, EDITIONS_S_CSV, titels)
+        
 
 def events(adress_and_type):
+    sleep(2)
     main_data = []
     adress = adress_and_type[0]
     nifty_type = adress_and_type[1]
 
-    print('Парсим {}'.format(adress))
     response = requests.post(EVENTS_REQ, data={
         "contractAddress": adress,
         "niftyType": nifty_type,
@@ -129,122 +140,128 @@ def events(adress_and_type):
         "onlySales":"false",
     })
     data = response.json()
-    total_pages = data['data']['meta']['page']['total_pages']
-    for page in range(1, total_pages):
-        response = requests.post(EVENTS_REQ, data={
-            "contractAddress":adress,
-            "niftyType":nifty_type,
-            "current":page,
-            "size":10,
-            "onlySales":"false"})
-        data = response.json()
-        
-        for d in data['data']['results']:
-            #print(d, sep='\n')
-            action = d['Type']
-            time = ''
-            user1 = ''
-            user2 = ''
-            user1_id = ''
-            user2_id = ''
-            price = ''
 
-            types = {
-                'listing': 'put',
-                'birth': 'has been deposited into Nifty Gateway by',
-                'offer': 'made a global offer for',
-                'withdrawal': 'withdrew',
-                'nifty_transfer': 'sent',
-                'sale': 'bought',
-                'bid': 'put on sale',
-            }
-
-            #2013-07-12T07:00:00Z datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S.%f')
-            r_time = d['Timestamp'].replace('T', ' ').replace('Z', '')
-            time = datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S.%f')
+    total_pages = data['data']['meta']['page']['total_pages'] + 1
+    print('Парсим {}. Всего страниц - {}'.format(adress, total_pages))
+    try:
+        for page in range(1, total_pages):
+            response = requests.post(EVENTS_REQ, data={
+                "contractAddress":adress,
+                "niftyType":nifty_type,
+                "current":page,
+                "size":10,
+                "onlySales":"false"})
+            data = response.json()
             
-            if action == 'offer':
-                id = d['id'] #d['UnmintedNiftyObj']['niftyTitle'] #'None'
-                token_id = 'None'
-                user1 = d['ListingUserProfile']['name']
-                user2 = 'None'
-                user1_id = d['ListingUserProfile']['id']
-                user2_id = 'None'
-                price = d['OfferAmountInCents'] * 0.01
-            elif action == 'listing':
-                id = d['NiftyObject']['id']
-                token_id = d['NiftyObject']['tokenId']
-                user1 = d['ListingUserProfile']['name']
-                user2 = 'None'
-                user1_id = d['ListingUserProfile']['id']
-                user2_id = 'None'
-                price = d['ListingAmountInCents'] * 0.01
-            elif action == 'birth':
-                id = d['NiftyObject']['id']
-                token_id = d['NiftyObject']['tokenId']
-                user1 = d['BirthingUserProfile']['name']
-                user2 = 'None'
-                user1_id = d['BirthingUserProfile']['id']
-                user2_id = 'None'
-                price = 'None'
-            elif action == 'withdrawal':
-                id = d['NiftyObject']['id']
-                token_id = d['NiftyObject']['tokenId']
-                user1 = d['WithdrawingUserProfile']['name']
-                user2 = 'None'
-                user1_id = d['WithdrawingUserProfile']['id']
-                user2_id = 'None'
-                price = 'None'
-            elif action == 'nifty_transfer':
-                id = d['NiftyObject']['id']
-                token_id = d['NiftyObject']['tokenId']
-                user1 = d['SendingUserProfile']['name']
-                user2 = d['ReceivingUserProfile']['name']
-                user1_id = d['SendingUserProfile']['id']
-                user2_id = d['ReceivingUserProfile']['id']
-                price = 'None'
-            elif action == 'sale':
-                id = d['NiftyObject']['id']
-                token_id = d['NiftyObject']['tokenId']
-                user1 = d['SellingUserProfile']['name']
-                user2 = d['PurchasingUserProfile']['name']
-                user1_id = d['SellingUserProfile']['id']
-                user2_id = d['PurchasingUserProfile']['id']
-                price = d['SaleAmountInCents'] * 0.01
-            elif action == 'bid':
-                id = d['id']
-                token_id = d['NiftyObject']['tokenId']
-                user1 = d['BiddingUserProfile']['name']
-                user2 = 'None'
-                user1_id = d['BiddingUserProfile']['id']
-                user2_id = 'None'
-                price = d['BidAmountInCents'] * 0.01
-            else:
-                print(action)
-                #print(d['BiddingUserProfile'])
-                #print(d['NiftyObject'])
-                id = d['UnmintedNiftyObj']['niftyTitle']
-                token_id = 'None'
-                user1 = d['ListingUserProfile']['name']
-                user2 = 'None'
-                user1_id = d['ListingUserProfile']['id']
-                user2_id = 'None'
-                price = d['ListingAmountInCents'] * 0.01
+            for d in data['data']['results']:
+                #print(d, sep='\n')
+                action = d['Type']
+                time = ''
+                user1 = ''
+                user2 = ''
+                user1_id = ''
+                user2_id = ''
+                price = ''
+
+                types = {
+                    'listing': 'put',
+                    'birth': 'has been deposited into Nifty Gateway by',
+                    'offer': 'made a global offer for',
+                    'withdrawal': 'withdrew',
+                    'nifty_transfer': 'sent',
+                    'sale': 'bought',
+                    'bid': 'put on sale',
+                }
+
+                #2013-07-12T07:00:00Z datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S.%f')
+                r_time = d['Timestamp'].replace('T', ' ').replace('Z', '')
+                time = datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S.%f')
+                
+                if action == 'offer':
+                    id = d['id'] #d['UnmintedNiftyObj']['niftyTitle'] #'None'
+                    token_id = 'None'
+                    user1 = d['ListingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['ListingUserProfile']['id']
+                    user2_id = 'None'
+                    price = d['OfferAmountInCents'] * 0.01
+                elif action == 'listing':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['ListingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['ListingUserProfile']['id']
+                    user2_id = 'None'
+                    price = d['ListingAmountInCents'] * 0.01
+                elif action == 'birth':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['BirthingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['BirthingUserProfile']['id']
+                    user2_id = 'None'
+                    price = 'None'
+                elif action == 'withdrawal':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['WithdrawingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['WithdrawingUserProfile']['id']
+                    user2_id = 'None'
+                    price = 'None'
+                elif action == 'nifty_transfer':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['SendingUserProfile']['name']
+                    user2 = d['ReceivingUserProfile']['name']
+                    user1_id = d['SendingUserProfile']['id']
+                    user2_id = d['ReceivingUserProfile']['id']
+                    price = 'None'
+                elif action == 'sale':
+                    id = d['NiftyObject']['id']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['SellingUserProfile']['name']
+                    user2 = d['PurchasingUserProfile']['name']
+                    user1_id = d['SellingUserProfile']['id']
+                    user2_id = d['PurchasingUserProfile']['id']
+                    price = d['SaleAmountInCents'] * 0.01
+                elif action == 'bid':
+                    id = d['id']
+                    token_id = 'None'
+                    user1 = d['BiddingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['BiddingUserProfile']['id']
+                    user2_id = 'None'
+                    price = d['BidAmountInCents'] * 0.01
+                else:
+                    print(action)
+                    #print(d['BiddingUserProfile'])
+                    #print(d['NiftyObject'])
+                    id = d['UnmintedNiftyObj']['niftyTitle']
+                    token_id = d['NiftyObject']['tokenId']
+                    user1 = d['ListingUserProfile']['name']
+                    user2 = 'None'
+                    user1_id = d['ListingUserProfile']['id']
+                    user2_id = 'None'
+                    price = d['ListingAmountInCents'] * 0.01
 
 
-            main_data.append({
-                'ID': id,
-                'Token ID': token_id,
-                'DateTime': time,
-                'User 1': user1,
-                'User 2': user2,
-                'User 1 ID': user1_id,
-                'User 2 ID': user2_id,
-                'Action': types[action],
-                'Price': str(price)
-            })
-            titels = list(main_data[0].keys())
-        save_csv(main_data, EVENTS_CSV, titels)
+                main_data.append({
+                    'ID': id,
+                    'Token ID': token_id,
+                    'DateTime': time,
+                    'User 1': user1,
+                    'User 2': user2,
+                    'User 1 ID': user1_id,
+                    'User 2 ID': user2_id,
+                    'Action': types[action],
+                    'Price': str(price)
+                })
+                titels = list(main_data[0].keys())
+    except KeyError:
+        print(data)
+    
+    save_csv(main_data, EVENTS_CSV, titels)
         
         # for i in main_data:
         #     print(i)
@@ -260,19 +277,19 @@ def main():
     #edition_first()
 
     # editions_second.csv
-    # total_pages = list(range(1, get_total_pages()+1))
-    # with Pool(20) as p:
-    #     p.map(editions_second, list(range(1,20)))
+    total_pages = list(range(1, get_total_pages()+1))
+    with Pool(20) as p:
+        p.map(editions_second, total_pages)
 
     # events.csv
-    items = get_html(OPEN_REQ)
-    adress_and_type = get_first_edition(items)
-    adress_and_type_to_parsing = []
-    for item in adress_and_type:
-        adress_and_type_to_parsing.append([item['Contract Address'], item['Edition Type']])
+    # items = get_html(OPEN_REQ)
+    # adress_and_type = get_first_edition(items)
+    # adress_and_type_to_parsing = []
+    # for item in adress_and_type:
+    #     adress_and_type_to_parsing.append([item['Contract Address'], item['Edition Type']])
     
-    with Pool(10) as p:
-        p.map(events, adress_and_type_to_parsing)
+    # with Pool(5) as p:
+    #     p.map(events, adress_and_type_to_parsing)
 
     end = datetime.now()
     total = end - start
