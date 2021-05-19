@@ -5,6 +5,7 @@ import requests
 import csv
 from fake_useragent import UserAgent
 from multiprocessing import Pool
+import logging
 
 EDITIONS_F_CSV = 'Parsing\\nifrygateway\\editions_first.csv'
 EDITIONS_S_CSV = 'Parsing\\nifrygateway\\editions_second.csv'
@@ -17,6 +18,7 @@ EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
 
 #   https://api.niftygateway.com//market/nifty-history-by-type/
 test = 'https://niftygateway.com/itemdetail/secondary/0x68c4dd3f302c449be39af528d56c6bd242b8cedb/23600030038'
+logging.basicConfig(filename='logs.csv', level=logging.INFO)
 
 HEADERS = {
     'user-agent': UserAgent().chrome
@@ -97,7 +99,7 @@ def get_sec_edition(items, page):
     #     print(item)
     #     for i in item:
     #         print(i)
-
+    logging.info("Done page - {}".format(page))
     return datas
 
 
@@ -117,7 +119,9 @@ def editions_second(page):
         datas.extend(get_sec_edition(items_query, page))
         titels = list(datas[0].keys())
         save_csv(datas, EDITIONS_S_CSV, titels)
-    except:
+    except IndexError:
+        print('ERROR {} - {}'.format(datas, page))
+    except Exception:
         detail = items_query['detail']
         if 'Request was throttled.' in detail:
             t = int(detail[-10])
@@ -127,6 +131,7 @@ def editions_second(page):
             datas.extend(get_sec_edition(items_query, page))
             titels = list(datas[0].keys())
             save_csv(datas, EDITIONS_S_CSV, titels)
+        
         
 
 def events(adress_and_type):
@@ -273,6 +278,7 @@ def events(adress_and_type):
 
 
 def main():
+    logging.info("Program started")
     start = datetime.now()
 
     # editins_first.csv
@@ -280,6 +286,7 @@ def main():
 
     # editions_second.csv
     total_pages = list(range(1, get_total_pages()+1))
+    #total_pages = list(range(1,5))
     with Pool(50) as p:
         p.map(editions_second, total_pages)
 
@@ -296,7 +303,7 @@ def main():
     end = datetime.now()
     total = end - start
     print('Total time: {}'.format(str(total)))
-
+    logging.info("Program end. Total time - {}".format(total))
 
 if __name__ == '__main__':
     main()
