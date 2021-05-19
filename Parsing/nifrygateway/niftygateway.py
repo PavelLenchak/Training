@@ -77,18 +77,21 @@ def get_first_edition(items):
 def get_sec_edition(items, page):
     datas = []
     print('Scrapping #{}'.format(page))
-    for item in items['data']['results']:
-        # Выдергиваем число между # и / - есть не во всех названиях
-        ed_number = item['name'][item['name'].find('#'):item['name'].find('/')]
-        datas.append(
-            {
-                'Collection name': item['project_name'],
-                'Contract Address': item['contract_address'],
-                'Edition number': item['name'],
-                'Token id': item['token_id_or_nifty_type'],
-                'Owner_id': item['owner_profile_id'],
-            }
-        )
+    try:
+        for item in items['data']['results']:
+            # Выдергиваем число между # и / - есть не во всех названиях
+            ed_number = item['name'][item['name'].find('#'):item['name'].find('/')]
+            datas.append(
+                {
+                    'Collection name': item['project_name'],
+                    'Contract Address': item['contract_address'],
+                    'Edition number': item['name'],
+                    'Token id': item['token_id_or_nifty_type'],
+                    'Owner_id': item['owner_profile_id'],
+                }
+            )
+    except KeyError:
+        print('KeyError {} {}'.format(page, items))
     # проверяем данные
     # for item in items['data']['results']:
     #     print(item)
@@ -127,7 +130,6 @@ def editions_second(page):
         
 
 def events(adress_and_type):
-    sleep(2)
     main_data = []
     adress = adress_and_type[0]
     nifty_type = adress_and_type[1]
@@ -278,7 +280,7 @@ def main():
 
     # editions_second.csv
     total_pages = list(range(1, get_total_pages()+1))
-    with Pool(20) as p:
+    with Pool(50) as p:
         p.map(editions_second, total_pages)
 
     # events.csv
