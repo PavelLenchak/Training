@@ -6,6 +6,7 @@ import csv
 from fake_useragent import UserAgent
 from multiprocessing import Pool
 import logging
+import traceback
 
 EDITIONS_F_CSV = 'Parsing\\nifrygateway\\editions_first.csv'
 EDITIONS_S_CSV = 'Parsing\\nifrygateway\\editions_second.csv'
@@ -18,7 +19,7 @@ EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
 
 #   https://api.niftygateway.com//market/nifty-history-by-type/
 test = 'https://niftygateway.com/itemdetail/secondary/0x68c4dd3f302c449be39af528d56c6bd242b8cedb/23600030038'
-logging.basicConfig(filename='logs.csv', level=logging.INFO)
+logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
 
 HEADERS = {
     'user-agent': UserAgent().chrome
@@ -120,7 +121,8 @@ def editions_second(page):
         titels = list(datas[0].keys())
         save_csv(datas, EDITIONS_S_CSV, titels)
     except IndexError:
-        print('ERROR {} - {}'.format(datas, page))
+        #print('ERROR {} - {}'.format(datas, page))
+        logging.info("INDEX ERROR - {}".format(page))
     except Exception:
         detail = items_query['detail']
         if 'Request was throttled.' in detail:
@@ -148,9 +150,9 @@ def events(adress_and_type):
     })
     data = response.json()
 
-    total_pages = data['data']['meta']['page']['total_pages'] + 1
-    print('Парсим {}. Всего страниц - {}'.format(adress, total_pages))
     try:
+        total_pages = data['data']['meta']['page']['total_pages'] + 1
+        print('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
         for page in range(1, total_pages):
             response = requests.post(EVENTS_REQ, data={
                 "contractAddress":adress,
@@ -244,13 +246,14 @@ def events(adress_and_type):
                     print(action)
                     #print(d['BiddingUserProfile'])
                     #print(d['NiftyObject'])
-                    id = d['UnmintedNiftyObj']['niftyTitle']
-                    token_id = d['NiftyObject']['tokenId']
-                    user1 = d['ListingUserProfile']['name']
+                    id = 'None'
+                    token_id = 'NEW ACTION' + action + adress + nifty_type
+                    user1 = 'None'
                     user2 = 'None'
-                    user1_id = d['ListingUserProfile']['id']
+                    user1_id = 'None'
                     user2_id = 'None'
-                    price = d['ListingAmountInCents'] * 0.01
+                    price = 'None'
+                    logging.info('NEW ACTION {} - {} {}'.format(action, adress, nifty_type))
 
 
                 main_data.append({
@@ -265,8 +268,10 @@ def events(adress_and_type):
                     'Price': str(price)
                 })
                 titels = list(main_data[0].keys())
-    except KeyError:
-        print(data)
+    except Exception:
+        #print(data)
+        logging.info('Ошибка на странице {} - {} {}'.format(page, adress, nifty_type))
+
     
     save_csv(main_data, EVENTS_CSV, titels)
         
@@ -285,20 +290,22 @@ def main():
     #edition_first()
 
     # editions_second.csv
-    total_pages = list(range(1, get_total_pages()+1))
-    #total_pages = list(range(1,5))
-    with Pool(50) as p:
-        p.map(editions_second, total_pages)
+    # tp = get_total_pages()
+    # total_pages = list(range(1, tp+1))
+    # logging.info("Total pages {}".format(tp))
+    # #total_pages = list(range(1,11))
+    # with Pool(50) as p:
+    #     p.map(editions_second, total_pages)
 
     # events.csv
-    # items = get_html(OPEN_REQ)
-    # adress_and_type = get_first_edition(items)
-    # adress_and_type_to_parsing = []
-    # for item in adress_and_type:
-    #     adress_and_type_to_parsing.append([item['Contract Address'], item['Edition Type']])
+    items = get_html(OPEN_REQ)
+    adress_and_type = get_first_edition(items)
+    adress_and_type_to_parsing = []
+    for item in adress_and_type:
+        adress_and_type_to_parsing.append([item['Contract Address'], item['Edition Type']])
     
-    # with Pool(5) as p:
-    #     p.map(events, adress_and_type_to_parsing)
+    with Pool(5) as p:
+        p.map(events, adress_and_type_to_parsing)
 
     end = datetime.now()
     total = end - start
