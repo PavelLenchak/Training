@@ -1,5 +1,7 @@
 import sys
 import re
+import logging
+from datetime import datetime
 from fake_useragent import UserAgent
 import requests
 from bs4 import BeautifulSoup
@@ -8,16 +10,23 @@ import csv
 # Фото Свойтво товаров Документы
 # <img src="http://www.thornlighting.ru/img/31/tlg_thumb_downlights/@@images/c47c664c-1c6f-4b2e-9622-51c23accdef6.jpeg" alt="Светильники типа downlight" title="" height="176" width="176">
 
-
 HOST = 'http://www.thornlighting.ru'
 URL = 'http://www.thornlighting.ru/ru-ru/produkty/vnutriennieie-osvieshchieniie'
+CSV_FILE = 'Parsing\\chandeliers\\products.csv'
+
+logging.basicConfig(filename='Parsing\\chandeliers\\logs.csv', level=logging.INFO)
 
 HEADERS = {
     'user-agent': UserAgent().chrome
 }
 
-def save_csv(itens, path):
-    pass
+def save_csv(items, path):
+    titels = list(items[0].keys())
+    with open(path, 'a', newline='', encoding='utf-8') as csv_file:
+        writer = csv.writer(csv_file, delimiter=';')
+        for item in items:
+            task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
+            writer.writerow(task)
 
 def clean_html(raw_html):
     cleanr = re.compile('<.*?>')
@@ -28,37 +37,59 @@ def get_html(url, params=''):
     req = requests.get(url, params=params)
     return req
 
+def get_():
+    pass
+
+def get_():
+    pass
+
+def get_():
+    pass
+
 def get_content(html):
     soup = BeautifulSoup(html, 'html.parser')
-    items = soup.find_all('div', class_='pbf width-1:4')
+    items = soup.find_all('a', class_='discreet')
 
     # получаем ссылки ВНУТРЕННЕЕ ОСВЕЩЕНИЕ
     project_urls = []
     for item in items:
-        project_urls.append(item.find('a', class_='discreet').get('href'))
+        project_urls.append({
+            'chapter_name': item.get_text(),
+            'url': item.get('href')
+            })
 
-    all_datas = []
+    # Кликаем на каждую категорию 1/8
     for p_u in project_urls:
-        html = get_html(p_u).text
+        chapter_name = p_u['chapter_name']
+        html = get_html(p_u['url']).text
         soup = BeautifulSoup(html, 'html.parser')
-        items = soup.find_all('div', class_='pbf width-1:4')
+        items = soup.find_all('a', class_='discreet')
 
+        # Определяем каждый продукт внутри категории 
         products = []
         for item in items:
-            products.append(item.find('a', class_='discreet').get('href'))
+            products.append({
+                'name': item.get_text(),
+                'url': item.get('href'),
+                })
         
         datas = []
+        # Кликаем на каждый товар
         for pr in products:
-            html = get_html(pr).text
+            serial_name = pr['name']
+            html = get_html(pr['url']).text
             soup = BeautifulSoup(html, 'html.parser')
             all_tr_even = soup.find_all('tr', class_='even')
             all_tr_odds = soup.find_all('tr', class_='odd')
 
-            # <td class="weight">0.91</td>
-            #<a class="article_link" href="http://www.thornlighting.ru/ru-ru/produkty/vnutriennieie-osvieshchieniie/svietilniki-tipa-downlight/Chalice/chalice-200/96629019">CHAL 200 LED1400-830 HF RSB</a>
+            # Парсим каждый товар внутри товара
             for tr_even in all_tr_even:
+                logging.info('Парсим {} в категории {}'.format(tr_even.find('a', class_='article_link').get_text(), pr))
                 all_td = tr_even.find_all('td')
                 datas.append({
+                    'Раздел 1': '',
+                    'Раздел 2': chapter_name,
+                    'Серия': serial_name,
                     'Описание': tr_even.find('a', class_='article_link').get_text(),
                     'Мощность W': clean_html(str(all_td[1])),
                     'Световой поток': clean_html(str(all_td[2])),
@@ -68,8 +99,12 @@ def get_content(html):
                 })
 
             for tr_odd in all_tr_odds:
+                logging.info('Парсим {} в категории {}'.format(tr_odd.find('a', class_='article_link').get_text(), pr))
                 all_td = tr_odd.find_all('td')
                 datas.append({
+                    'Раздел 1': '',
+                    'Раздел 2': chapter_name,
+                    'Серия': serial_name,
                     'Описание': tr_odd.find('a', class_='article_link').get_text(),
                     'Мощность W': clean_html(str(all_td[1])),
                     'Световой поток': clean_html(str(all_td[2])),
@@ -78,16 +113,16 @@ def get_content(html):
                     'SAP CODE': clean_html(str(all_td[9])),
                 })
         
-        all_datas.append(datas)
-    
-    for i in all_datas:
-        print(i, sep='\n')
-    sys.exit()
+        print(datas[0])
+        save_csv(datas, CSV_FILE)
 
 
 def main():
+    start = datetime.now()
     html = get_html(URL)
     get_content(html.text)
+    end = datetime.now()
+    print(end - start)
 
 if __name__ == '__main__':
     main()
