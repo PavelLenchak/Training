@@ -6,6 +6,8 @@ from fake_useragent import UserAgent
 import requests
 from bs4 import BeautifulSoup
 import csv
+from multiprocessing import Pool
+import codecs
 
 # Фото Свойтво товаров Документы
 # <img src="http://www.thornlighting.ru/img/31/tlg_thumb_downlights/@@images/c47c664c-1c6f-4b2e-9622-51c23accdef6.jpeg" alt="Светильники типа downlight" title="" height="176" width="176">
@@ -22,7 +24,7 @@ HEADERS = {
 
 def save_csv(items, path):
     titels = list(items[0].keys())
-    with open(path, 'a', newline='', encoding='utf-8') as csv_file:
+    with open(path, 'a', encoding='utf-8', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         for item in items:
             task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
@@ -99,11 +101,42 @@ def get_content(html):
                 sap_code = soup.find('div', id='article-detail').find('span').get_text()
                 modification = soup.find('span', id='breadcrumbs-current').get_text()
                 version = soup.find('span', id='breadcrumbs-5').find('a').get_text()
-                p = list(soup.find('div', class_='wrapper').find('p'))
+                try:
+                    p = list(soup.find('div', class_='wrapper').find('p'))
+                except:
+                    try:
+                        p = list(soup.find('div', class_='row Spacer').find('p'))
+                    except:
+                        pass
                 # for i in p:
                 #     print(i)
+                try:
+                    size = p[3][p[3].find(':')+2:]
+                except:
+                    size = ''
+                try:
+                    power = p[5][p[5].find(':')+2:]
+                except:
+                    power = ''
+                try:
+                    light = p[7][p[7].find(':')+2:]
+                except:
+                    light = ''
+                try:
+                    kpd = p[9][p[9].find(':')+2:]
+                except:
+                    kpd = ''
+                try:
+                    weight = p[11][p[11].find(':')+2:]
+                except:
+                    weight = ''
+                try:
+                    common_datas = p[0]
+                except:
+                    common_datas = ''
 
-                logging.info('Парсим {} в категории {}'.format(tr_even.find('a', class_='article_link').get_text(), pr))
+                logging.info('Парсим {} {} в категории {}'.format(modification, serial_name, sub_chapter))
+                print(f'Парсим {modification} | {serial_name}')
                 datas.append({
                     'Раздел 1': main_chapter,
                     'Раздел 2': sub_chapter,
@@ -112,13 +145,15 @@ def get_content(html):
                     'Версия': version,
                     'Модификация': modification,
                     'SAP CODE': sap_code,
-                    'Общие данные': p[0],
-                    'Размеры': p[3][p[3].find(':')+2:],
-                    'Номинальная мощность': p[5][p[5].find(':')+2:],
-                    'Световой поток светильника': p[7][p[7].find(':')+2:],
-                    'КПД светильника': p[9][p[9].find(':')+2:],
-                    'Вес': p[11][p[11].find(':')+2:],
+                    'Общие данные': common_datas,#p[0],
+                    'Размеры': size,#p[3][p[3].find(':')+2:],
+                    'Номинальная мощность': power,#p[5][p[5].find(':')+2:],
+                    'Световой поток светильника': light,#p[7][p[7].find(':')+2:],
+                    'КПД светильника': kpd,#p[9][p[9].find(':')+2:],
+                    'Вес': weight,#p[11][p[11].find(':')+2:],
                 })
+                save_csv(datas, CSV_FILE)
+                datas=[]
 
             # Узнаём url каждой модификации
             # for tr_even in all_tr_even:
@@ -151,15 +186,17 @@ def get_content(html):
             #         'SAP CODE': clean_html(str(all_td[9])),
             #     })
         
-        print(datas[0])
-        save_csv(datas, CSV_FILE)
+        #print(datas[0])
+        
 
 
 def main():
     start = datetime.now()
+    logging.info('Начинаем парсить. Старт - {}'.format(start))
     html = get_html(URL)
     get_content(html.text)
     end = datetime.now()
+    logging.info('Закончили. Время выполнения - {}'.format(end - start))
     print(end - start)
 
 if __name__ == '__main__':
