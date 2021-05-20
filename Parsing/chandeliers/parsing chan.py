@@ -24,7 +24,7 @@ HEADERS = {
 
 def save_csv(items, path):
     titels = list(items[0].keys())
-    with open(path, 'a', encoding='utf-8', newline='') as csv_file:
+    with codecs.open(path, 'a', encoding='utf-32') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         for item in items:
             task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
@@ -101,6 +101,8 @@ def get_content(html):
                 sap_code = soup.find('div', id='article-detail').find('span').get_text()
                 modification = soup.find('span', id='breadcrumbs-current').get_text()
                 version = soup.find('span', id='breadcrumbs-5').find('a').get_text()
+                img_url = soup.find('div', class_='portlet portletImages').find('img').get('src')
+
                 try:
                     p = list(soup.find('div', class_='wrapper').find('p'))
                 except:
@@ -108,8 +110,6 @@ def get_content(html):
                         p = list(soup.find('div', class_='row Spacer').find('p'))
                     except:
                         pass
-                # for i in p:
-                #     print(i)
                 try:
                     size = p[3][p[3].find(':')+2:]
                 except:
@@ -135,7 +135,7 @@ def get_content(html):
                 except:
                     common_datas = ''
 
-                logging.info('Парсим {} {} в категории {}'.format(modification, serial_name, sub_chapter))
+                logging.info('Парсим {} {} в категориях {} {}'.format(modification, serial_name, sub_chapter, main_chapter))
                 print(f'Парсим {modification} | {serial_name}')
                 datas.append({
                     'Раздел 1': main_chapter,
@@ -151,50 +151,24 @@ def get_content(html):
                     'Световой поток светильника': light,#p[7][p[7].find(':')+2:],
                     'КПД светильника': kpd,#p[9][p[9].find(':')+2:],
                     'Вес': weight,#p[11][p[11].find(':')+2:],
+                    'IMG': img_url,
                 })
                 save_csv(datas, CSV_FILE)
                 datas=[]
 
-            # Узнаём url каждой модификации
-            # for tr_even in all_tr_even:
-            #     logging.info('Парсим {} в категории {}'.format(tr_even.find('a', class_='article_link').get_text(), pr))
-            #     all_td = tr_even.find_all('td')
-            #     datas.append({
-            #         'Раздел 1': '',
-            #         'Раздел 2': chapter_name,
-            #         'Серия': serial_name,
-            #         'Описание': tr_even.find('a', class_='article_link').get_text(),
-            #         'Мощность W': clean_html(str(all_td[1])),
-            #         'Световой поток': clean_html(str(all_td[2])),
-            #         'Type': clean_html(str(all_td[6])),
-            #         'Вес': tr_even.find('td', class_='weight').get_text(),
-            #         'SAP CODE': clean_html(str(all_td[9])),
-            #     })
-
-            # for tr_odd in all_tr_odds:
-            #     logging.info('Парсим {} в категории {}'.format(tr_odd.find('a', class_='article_link').get_text(), pr))
-            #     all_td = tr_odd.find_all('td')
-            #     datas.append({
-            #         'Раздел 1': '',
-            #         'Раздел 2': chapter_name,
-            #         'Серия': serial_name,
-            #         'Описание': tr_odd.find('a', class_='article_link').get_text(),
-            #         'Мощность W': clean_html(str(all_td[1])),
-            #         'Световой поток': clean_html(str(all_td[2])),
-            #         'Type': clean_html(str(all_td[6])),
-            #         'Вес': tr_odd.find('td', class_='weight').get_text(),
-            #         'SAP CODE': clean_html(str(all_td[9])),
-            #     })
-        
-        #print(datas[0])
-        
-
-
 def main():
     start = datetime.now()
     logging.info('Начинаем парсить. Старт - {}'.format(start))
-    html = get_html(URL)
-    get_content(html.text)
+
+    main_url = [
+        'http://www.thornlighting.ru/ru-ru/produkty/vnutriennieie-osvieshchieniie',
+        'http://www.thornlighting.ru/ru-ru/produkty/naruzhnoie-osvieshchieniie',
+        'http://www.thornlighting.ru/ru-ru/produkty/sistiemy-upravlieniia-osvieshchieniiem-i-avariinoie-osvieshchieniie'
+    ]
+    for each_url in main_url:
+        html = get_html(each_url)
+        get_content(html.text)
+
     end = datetime.now()
     logging.info('Закончили. Время выполнения - {}'.format(end - start))
     print(end - start)
