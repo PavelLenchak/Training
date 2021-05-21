@@ -12,7 +12,7 @@ import functools
 
 # Фото Свойтво товаров Документы
 # <img src="http://www.thornlighting.ru/img/31/tlg_thumb_downlights/@@images/c47c664c-1c6f-4b2e-9622-51c23accdef6.jpeg" alt="Светильники типа downlight" title="" height="176" width="176">
-
+# <a target="_blank" rel="nofollow" href="http://www.thornlighting.ru//object/PDF/datasheet.aspx?Lang=RU&amp;iso2=RU&amp;ArticleID=298763&amp;template=lvk_tl&amp;CompanyID=7&amp;tiltAngle=0&amp;DatasheetType=3&amp;ModeID=21&amp;ext=.pdf">Комбинированный список параметров (.pdf)</a>
 HOST = 'http://www.thornlighting.ru'
 URL = 'http://www.thornlighting.ru/ru-ru/produkty/vnutriennieie-osvieshchieniie'
 CSV_FILE = 'Parsing\\chandeliers\\products.csv'
@@ -28,7 +28,15 @@ HEADERS = {
 
 def save_csv(items, path):
     titels = list(items[0].keys())
-    with open(path, 'a', newline='') as csv_file:
+    # try:
+    #     with open(path, 'a', newline='') as csv_file:
+    #         writer = csv.writer(csv_file, delimiter=';')
+    #         for item in items:
+    #             task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
+    #             writer.writerow(task)
+    # except:
+    #     print('Изменение кодировки {}'.format(items[0]['Модификация']))
+    with codecs.open(path, 'a', encoding='utf-32') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         for item in items:
             task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
@@ -60,7 +68,7 @@ def clean_html(raw_html):
     return cleantext
 
 def get_html(url):
-    req = requests.get(url)
+    req = requests.get(url, headers=HEADERS)
     return req
 
 
@@ -88,20 +96,24 @@ def get_modes(url, titels):
     serial_description = titels[3]
 
     # Ссылки на все документы страницы
-    docs_url = []
-    options = soup.find_all('div', class_='option')
-    for option in options:
-        docs_url.append({
-            'url': option.find('a').get('href'),
-            'type': option.find('a', {'target': '_blank'}).get_text()
-            })
+    # docs_url = []
+    # options = soup.find_all('div', class_='option')
+    # for option in options:
+    #     docs_url.append({
+    #         'url': option.find('a').get('href'),
+    #         'type': option.find('a', {'target': '_blank'}).get_text()
+    #         })
     
-    # Сохрагяем файлы по ссылкам
-    for dicti in docs_url:
-        url = dicti['url']
-        file_name = dicti['type'][:dicti['type'].find('(')-1]
-        type = dicti['type'][dicti['type'].find('.'):dicti['type'].find(')')]
-        save_docs(url, file_name=file_name, file_type=type, sap_code=sap_code)
+    # # Сохрагяем файлы по ссылкам
+    # for dicti in docs_url:
+    #     url = dicti['url']
+    #     print(url)
+    #     a = requests.get(url)
+    #     file_name = dicti['type'][:dicti['type'].find('(')-1]
+    #     print(dicti['type'])
+    #     sys.exit()
+    #     type = dicti['type'][dicti['type'].find('.'):dicti['type'].find(')')]
+    #     save_docs(url, file_name=file_name, file_type=type, sap_code=sap_code)
 
     # try:
     #     img_url = soup.find('div', class_='portletImages').find('img').get('src')
@@ -116,32 +128,32 @@ def get_modes(url, titels):
             p = list(soup.find('div', class_='row Spacer').find('p'))
         except:
             logging.info(f'P find ERROR {main_chapter} {sub_chapter} {serial_name} {url}')
-            print(f'P find ERROR {main_chapter} {sub_chapter} {serial_name}')
+            print(f'P find ERROR {main_chapter} {sub_chapter} {serial_name} {modification}')
             
     try:
         size = p[3][p[3].find(':')+2:]
     except:
-        size = ''
+        size = 'None'
     try:
         power = p[5][p[5].find(':')+2:]
     except:
-        power = ''
+        power = 'None'
     try:
         light = p[7][p[7].find(':')+2:]
     except:
-        light = ''
+        light = 'None'
     try:
         kpd = p[9][p[9].find(':')+2:]
     except:
-        kpd = ''
+        kpd = 'None'
     try:
         weight = p[11][p[11].find(':')+2:]
     except:
-        weight = ''
+        weight = 'None'
     try:
         common_datas = p[0]
     except:
-        common_datas = ''
+        common_datas = 'None'
 
     print(f'Парсим {main_chapter} | {sub_chapter} | {serial_name} | {modification}')
     datas.append({
@@ -162,6 +174,7 @@ def get_modes(url, titels):
 
     for index, span in enumerate(span_left):
         datas[0][span] = span_right[index]
+    datas[0]['url'] = url
     save_csv(datas, CSV_FILE)
     datas=[]
 
@@ -219,79 +232,12 @@ def get_content(html):
                 ]
 
             print(f'ССЫЛОК НА МОДИФИКАЦИИ {len(all_mod_urls)}')
-            # for url in all_mod_urls:
-            #     get_modes(url, datas_to_save)
+            for url in all_mod_urls:
+                get_modes(url, datas_to_save)
             
-            with Pool(30) as p:
-                p.map(functools.partial(get_modes, titels=datas_to_save), all_mod_urls)
+            # with Pool(20) as p:
+            #     p.map(functools.partial(get_modes, titels=datas_to_save), all_mod_urls)
 
-            #<div class="wrapper" style="display: block;"><p>Встраиваемый светодиодный светильник.
-            # for url in all_mod_urls:
-            #     html = get_html(url).text
-            #     soup = BeautifulSoup(html, 'html.parser')
-
-            #     sap_code = soup.find('div', id='article-detail').find('span').get_text()
-            #     modification = soup.find('span', id='breadcrumbs-current').get_text()
-            #     version = soup.find('span', id='breadcrumbs-5').find('a').get_text()
-
-            #     try:
-            #         img_url = soup.find('div', class_='portletImages').find('img').get('src')
-            #     except:
-            #         print('IMG ERROR')
-            #         img_url = 'IMG ERROR'
-
-            #     try:
-            #         p = list(soup.find('div', class_='wrapper').find('p'))
-            #     except:
-            #         try:
-            #             p = list(soup.find('div', class_='row Spacer').find('p'))
-            #         except:
-            #             pass
-            #     try:
-            #         size = p[3][p[3].find(':')+2:]
-            #     except:
-            #         size = ''
-            #     try:
-            #         power = p[5][p[5].find(':')+2:]
-            #     except:
-            #         power = ''
-            #     try:
-            #         light = p[7][p[7].find(':')+2:]
-            #     except:
-            #         light = ''
-            #     try:
-            #         kpd = p[9][p[9].find(':')+2:]
-            #     except:
-            #         kpd = ''
-            #     try:
-            #         weight = p[11][p[11].find(':')+2:]
-            #     except:
-            #         weight = ''
-            #     try:
-            #         common_datas = p[0]
-            #     except:
-            #         common_datas = ''
-
-            
-            #     print(f'Парсим {modification} | {serial_name} | {main_chapter}')
-            #     datas.append({
-            #         'Раздел 1': main_chapter,
-            #         'Раздел 2': sub_chapter,
-            #         'Серия': serial_name,
-            #         'Описание серии': serial_description,
-            #         'Версия': version,
-            #         'Модификация': modification,
-            #         'SAP CODE': sap_code,
-            #         'Общие данные': common_datas,#p[0],
-            #         'Размеры': size,#p[3][p[3].find(':')+2:],
-            #         'Номинальная мощность': power,#p[5][p[5].find(':')+2:],
-            #         'Световой поток светильника': light,#p[7][p[7].find(':')+2:],
-            #         'КПД светильника': kpd,#p[9][p[9].find(':')+2:],
-            #         'Вес': weight,#p[11][p[11].find(':')+2:],
-            #         'IMG': img_url,
-            #     })
-            #     save_csv(datas, CSV_FILE)
-            #     datas=[]
 
 def do_all(each_url):
     html = get_html(each_url)
@@ -307,10 +253,10 @@ def main():
         'http://www.thornlighting.ru/ru-ru/produkty/sistiemy-upravlieniia-osvieshchieniiem-i-avariinoie-osvieshchieniie'
     ]
     
-    for url in main_url:
-        do_all(url)
-    # with Pool(3) as p:
-    #     p.map(do_all, main_url)
+    # for url in main_url:
+    #     do_all(url)
+    with Pool(40) as p:
+        p.map(do_all, main_url)
 
     end = datetime.now()
     logging.info('Закончили. Время выполнения - {}'.format(end - start))
