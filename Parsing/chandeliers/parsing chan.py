@@ -42,17 +42,23 @@ def get_html(url):
     req = requests.get(url)
     return req
 
-def test(url, titels):
-    print(url)
-    print(titels)
-    sys.exit()
 
 def get_modes(url, titels):
     datas = []
     html = get_html(url).text
     soup = BeautifulSoup(html, 'html.parser')
+    fields = soup.find_all('ul', class_='visualNoMarker')
+    span_left = []
+    span_right = []
+    for field in fields:
+        all_span_left = field.find_all('span', class_='left')
+        all_span_right = field.find_all('span', class_='right')
+        for span_l in all_span_left:
+            span_left.append(clean_html(str(span_l)))
+        for span_r in all_span_right:
+            span_right.append(clean_html(str(span_r)))
 
-    sap_code = soup.find('div', id='article-detail').find('span').get_text()
+    sap_code = soup.find('div', id='article-detail').find('span', {'title': 'SAP Code'}).get_text()
     modification = soup.find('span', id='breadcrumbs-current').get_text()
     version = soup.find('span', id='breadcrumbs-5').find('a').get_text()
     main_chapter = titels[0]
@@ -100,7 +106,7 @@ def get_modes(url, titels):
     except:
         common_datas = ''
 
-    print(f'Парсим {modification} | {serial_name} | {main_chapter}')
+    print(f'Парсим {main_chapter} | {sub_chapter} | {serial_name} | {modification}')
     datas.append({
         'Раздел 1': main_chapter,
         'Раздел 2': sub_chapter,
@@ -116,6 +122,7 @@ def get_modes(url, titels):
         'КПД светильника': kpd,#p[9][p[9].find(':')+2:],
         'Вес': weight,#p[11][p[11].find(':')+2:],
         'IMG': img_url,
+        'Datas': span_right
     })
     save_csv(datas, CSV_FILE)
     datas=[]
