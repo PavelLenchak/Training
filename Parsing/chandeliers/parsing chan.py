@@ -29,6 +29,8 @@ def save_csv(items, path):
         for item in items:
             task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
             writer.writerow(task)
+    logging.info('Парсим {} {} в категориях {} {}'.format(items[0]['Модификация'], items[0]['Серия'], items[0]['Раздел 2'], items[0]['Раздел 1']))
+
 
 def clean_html(raw_html):
     cleanr = re.compile('<.*?>')
@@ -39,14 +41,6 @@ def get_html(url, params=''):
     req = requests.get(url, params=params)
     return req
 
-def get_():
-    pass
-
-def get_():
-    pass
-
-def get_mod_content():
-    pass
 
 def get_content(html):
     soup = BeautifulSoup(html, 'html.parser')
@@ -101,7 +95,12 @@ def get_content(html):
                 sap_code = soup.find('div', id='article-detail').find('span').get_text()
                 modification = soup.find('span', id='breadcrumbs-current').get_text()
                 version = soup.find('span', id='breadcrumbs-5').find('a').get_text()
-                img_url = soup.find('div', class_='portlet portletImages').find('img').get('src')
+
+                try:
+                    img_url = soup.find('div', class_='portletImages').find('img').get('src')
+                except:
+                    print('IMG ERROR')
+                    img_url = 'IMG ERROR'
 
                 try:
                     p = list(soup.find('div', class_='wrapper').find('p'))
@@ -135,8 +134,8 @@ def get_content(html):
                 except:
                     common_datas = ''
 
-                logging.info('Парсим {} {} в категориях {} {}'.format(modification, serial_name, sub_chapter, main_chapter))
-                print(f'Парсим {modification} | {serial_name}')
+            
+                print(f'Парсим {modification} | {serial_name} | {main_chapter}')
                 datas.append({
                     'Раздел 1': main_chapter,
                     'Раздел 2': sub_chapter,
@@ -156,6 +155,10 @@ def get_content(html):
                 save_csv(datas, CSV_FILE)
                 datas=[]
 
+def do_all(each_url):
+    html = get_html(each_url)
+    get_content(html.text)
+
 def main():
     start = datetime.now()
     logging.info('Начинаем парсить. Старт - {}'.format(start))
@@ -165,9 +168,9 @@ def main():
         'http://www.thornlighting.ru/ru-ru/produkty/naruzhnoie-osvieshchieniie',
         'http://www.thornlighting.ru/ru-ru/produkty/sistiemy-upravlieniia-osvieshchieniiem-i-avariinoie-osvieshchieniie'
     ]
-    for each_url in main_url:
-        html = get_html(each_url)
-        get_content(html.text)
+    
+    with Pool(3) as p:
+        p.map(do_all, main_url)
 
     end = datetime.now()
     logging.info('Закончили. Время выполнения - {}'.format(end - start))
