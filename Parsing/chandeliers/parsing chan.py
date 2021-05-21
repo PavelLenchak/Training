@@ -50,6 +50,7 @@ def save_docs(url, file_name, file_type, sap_code):
         items = [sap_code, f'{file_name}{file_type}']
         writer.writerow(items)
     
+    print('Записан файл {} {}'.format(sap_code, file_name))
     logging.info('Записан файл {} {}'.format(sap_code, file_name))
 
 
@@ -221,7 +222,7 @@ def get_content(html):
             # for url in all_mod_urls:
             #     get_modes(url, datas_to_save)
             
-            with Pool(10) as p:
+            with Pool(30) as p:
                 p.map(functools.partial(get_modes, titels=datas_to_save), all_mod_urls)
 
             #<div class="wrapper" style="display: block;"><p>Встраиваемый светодиодный светильник.
