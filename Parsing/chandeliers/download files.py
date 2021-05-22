@@ -7,6 +7,7 @@ import re
 from fake_useragent import UserAgent
 import codecs
 import string, random
+from multiprocessing import Pool
 
 HEADERS = {
     'user-agent': UserAgent().chrome}
@@ -15,7 +16,12 @@ DOCS_PATH = 'Parsing\\chandeliers\\docs'
 DOCS_FILE = 'Parsing\\chandeliers\\docs.csv'
 
 PRODICTS_FILE = 'Parsing\\chandeliers\\files\\products.csv'
+
+FIRST_PART = 'Parsing\\chandeliers\\files\\first_urls.csv'
+SECOND_PART = 'Parsing\\chandeliers\\files\\second_urls.csv'
 URLS = 'Parsing\\chandeliers\\files\\urls.csv'
+LAST_URLS = 'Parsing\\chandeliers\\files\\last_urls.csv'
+TEST_URL_TO_SAVE = 'D:\\Python\\docs'
 
 logging.basicConfig(filename='Parsing\\chandeliers\\download docs.csv', level=logging.INFO)
 
@@ -28,10 +34,10 @@ def get_html(url):
     req = requests.get(url, headers=HEADERS)
     return req
 
-def save_to_csv(path, item):
-    with open('Parsing\\chandeliers\\files\\urls.csv', 'a', newline='') as csv_file:
-            writer = csv.writer(csv_file, delimiter=';')
-            writer.writerow([item])
+# def save_to_csv(path, item):
+#     with open('Parsing\\chandeliers\\files\\urls.csv', 'a', newline='') as csv_file:
+#             writer = csv.writer(csv_file, delimiter=';')
+#             writer.writerow([item])
 
 def read_csv(path):
     urls = []
@@ -50,16 +56,16 @@ def save_docs(url, file_name, file_type, sap_code):
 
     #print(path)
     ufr = requests.get(url)
-    with open(f'{DOCS_PATH}\{sap_code}_{file_name}{file_type}',"wb") as file: #открываем файл для записи, в режиме wb
+    with open(f'{TEST_URL_TO_SAVE}\{sap_code}_{file_name}{file_type}',"wb") as file: #открываем файл для записи, в режиме wb
         file.write(ufr.content) #записываем содержимое в файл; как видите - content запроса
     
     with open(DOCS_FILE, 'a', newline='') as doc_file:
         writer = csv.writer(doc_file, delimiter=';')
-        items = [sap_code, f'{file_name}{file_type}']
+        items = [sap_code, f'{sap_code}_{file_name}{file_type}']
         writer.writerow(items)
     
     print('Записан файл {}_{}'.format(sap_code, file_name))
-    logging.info('Записан файл {} {}'.format(sap_code, file_name))
+    logging.info('Записан файл {}_{} {}'.format(sap_code, file_name, url))
 
 def get_files(url):
     html = get_html(url)
@@ -87,14 +93,16 @@ def get_files(url):
         save_docs(url, file_name=file_name, file_type=type, sap_code=sap_code)
 
 
-
 def main():
     urls = read_csv(URLS)
-    counter = 0 
-    for url in urls:
-        if counter < 3:
-            get_files(url)
-        counter += 1
+    # counter = 0 
+    # for url in urls:
+    #     if counter < 2:
+    #         get_files(url)
+    #     counter += 1
+
+    with Pool(40) as p:
+        p.map(get_files, urls)
     
 if __name__ == '__main__':
     main()
