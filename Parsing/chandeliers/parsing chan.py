@@ -74,8 +74,10 @@ def get_html(url):
 
 def get_modes(url, titels):
     datas = []
-    html = get_html(url).text
-    soup = BeautifulSoup(html, 'html.parser')
+    html = get_html(url)
+    if html.status_code != 200:
+        print(f'Ошибка доступа {html.status_code}')
+    soup = BeautifulSoup(html.text, 'html.parser')
     fields = soup.find_all('ul', class_='visualNoMarker')
     span_left = []
     span_right = []
@@ -87,9 +89,15 @@ def get_modes(url, titels):
         for span_r in all_span_right:
             span_right.append(clean_html(str(span_r)))
 
-    sap_code = soup.find('div', id='article-detail').find('span', {'title': 'SAP Code'}).get_text()
-    modification = soup.find('span', id='breadcrumbs-current').get_text()
-    version = soup.find('span', id='breadcrumbs-5').find('a').get_text()
+    try:
+        sap_code = soup.find('div', id='article-detail').find('span', {'title': 'SAP Code'}).get_text()
+        modification = soup.find('span', id='breadcrumbs-current').get_text()
+        version = soup.find('span', id='breadcrumbs-5').find('a').get_text()
+    except:
+        sap_code = 'None'
+        modification = 'None'
+        version = 'None'
+
     main_chapter = titels[0]
     sub_chapter = titels[1]
     serial_name = titels[2]
