@@ -11,23 +11,17 @@ import codecs
 import string, random
 from multiprocessing import Pool
 from progress.bar import IncrementalBar
+import io
 
 HEADERS = {
     'user-agent': UserAgent().chrome}
 
-DOCS_PATH = 'Parsing\\chandeliers\\docs'
 DOCS_FILE = 'Parsing\\chandeliers\\docs.csv'
 
-PRODICTS_FILE = 'Parsing\\chandeliers\\files\\products.csv'
-
-FIRST_PART = 'Parsing\\chandeliers\\files\\first_urls.csv'
-SECOND_PART = 'Parsing\\chandeliers\\files\\second_urls.csv'
 URLS = 'Parsing\\chandeliers\\files\\urls.csv'
-
-LAST_URLS = 'Parsing\\chandeliers\\files\\last_part.csv'
-SUPER_URLS = 'Parsing\\chandeliers\\files\\super_last.csv'
-ULTRA_LAST = 'Parsing\\chandeliers\\files\\ultra_last.csv'
 TEST_URL_TO_SAVE = 'D:\\Python\\docs'
+MAIN_FILE = 'Parsing\\chandeliers\\files\MAIN FILE.csv'
+SUB_FILE = 'Parsing\\chandeliers\\files\SUB FILE.csv'
 
 logging.basicConfig(filename='Parsing\\chandeliers\\download docs.csv', level=logging.INFO)
 
@@ -40,17 +34,23 @@ def get_html(url):
     req = requests.get(url, headers=HEADERS)
     return req
 
-# def save_to_csv(path, item):
-#     with open('Parsing\\chandeliers\\files\\urls.csv', 'a', newline='') as csv_file:
-#             writer = csv.writer(csv_file, delimiter=';')
-#             writer.writerow([item])
+#[{ }]
+def save_to_csv(items, path):
+    titels = list(items[0].keys())
+    with open(path, 'a', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=';')
+        for item in items:
+            task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
+            writer.writerow(task)
+            print(f'Saving {task[-1]}')
+    print('Saving process have done')
 
 def read_csv(path):
     urls = []
     with open(path, 'r') as file:
         csv_reader = csv.reader(file, delimiter=';')
         for row in csv_reader:
-            url = row[0].replace(',', '.')
+            url = row[-1].replace(',', '.')
             urls.append(url)
             #save_to_csv('Parsing\\chandeliers\\files\\urls.csv',url)
     return urls
@@ -102,17 +102,47 @@ def get_files(url):
     bar.finish()
 
 
+def get_mode(url):
+    html = get_html(url).text
+    soup = BeautifulSoup(html, 'html.parser')
+    all_bread_crumbs = soup.find_all('div', id='portal-breadcrumbs')
+    wrapper = soup.find('div', id='article-data')
+    detail = soup.find('div', id='article-detail')
+    field = soup.find('div', class_='row rowSpacer')
+    span = clean_html(str(field.find_all('span')))
+
+    bread_crumbs = []
+    for bc in all_bread_crumbs:
+        bread_crumbs.append({
+            'Chapter 1': bc.find('span', id='breadcrumbs-2').find('a').get_text(),
+            'Chapter 2': bc.find('span', id='breadcrumbs-3').find('a').get_text(),
+            'Seria': bc.find('span', id='breadcrumbs-4').find('a').get_text(),
+            'Decripion of Seria': wrapper.find('p').get_text(),
+            'Version': bc.find('span', id='breadcrumbs-5').find('a').get_text(),
+            'Description extra': span,
+            'SAP Code': clean_html(str(detail.find('p').find('span', {'title': 'SAP Code'}).get_text()))
+        })
+        
+    # print(bread_crumbs)
+    # sys.exit()
+
+    save_to_csv(bread_crumbs, SUB_FILE)
+
+
 def main():
     start = datetime.now()
-    urls = read_csv(ULTRA_LAST)
+    urls = read_csv(MAIN_FILE)
     # counter = 0 
     # for url in urls:
     #     if counter < 2:
     #         get_files(url)
     #     counter += 1
 
-    with Pool(40) as p:
-        p.map(get_files, urls)
+    for url in urls:
+        get_mode(url)
+
+    # with Pool(40) as p:
+    #     p.map(get_files, urls)
     
     end = datetime.now()
     print(f'Закончили выгрузку {end - start}')

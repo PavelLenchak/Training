@@ -17,6 +17,9 @@ HOST = 'http://www.thornlighting.ru'
 URL = 'http://www.thornlighting.ru/ru-ru/produkty/vnutriennieie-osvieshchieniie'
 CSV_FILE = 'Parsing\\chandeliers\\products.csv'
 
+TEST_FILE = 'Parsing\\chandeliers\\products_first_part.csv'
+MAIN_FILE = 'Parsing\\chandeliers\\files\MAIN FILE.csv'
+
 DOCS_PATH = 'Parsing\\chandeliers\\docs'
 DOCS_FILE = 'Parsing\\chandeliers\\docs.csv'
 
@@ -183,7 +186,7 @@ def get_modes(url, titels):
     for index, span in enumerate(span_left):
         datas[0][span] = span_right[index]
     datas[0]['url'] = url
-    save_csv(datas, CSV_FILE)
+    save_csv(datas, TEST_FILE) #CSV_FILE)
     datas=[]
 
 
@@ -261,10 +264,10 @@ def main():
         'http://www.thornlighting.ru/ru-ru/produkty/sistiemy-upravlieniia-osvieshchieniiem-i-avariinoie-osvieshchieniie'
     ]
     
-    # for url in main_url:
-    #     do_all(url)
-    with Pool(40) as p:
-        p.map(do_all, main_url)
+    for url in main_url:
+        do_all(url)
+    # with Pool(40) as p:
+    #     p.map(do_all, main_url)
 
     end = datetime.now()
     logging.info('Закончили. Время выполнения - {}'.format(end - start))
