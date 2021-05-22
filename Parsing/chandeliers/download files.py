@@ -24,8 +24,6 @@ TEST_URL_TO_SAVE = 'D:\\Python\\docs'
 MAIN_FILE = 'Parsing\\chandeliers\\files\MAIN FILE.csv'
 SUB_FILE = 'Parsing\\chandeliers\\files\SUB FILE.csv'
 
-logging.basicConfig(filename='Parsing\\chandeliers\\download docs.csv', level=logging.INFO)
-
 def clean_html(raw_html):
     cleanr = re.compile('<.*?>')
     cleantext = re.sub(cleanr, '', raw_html)
@@ -39,22 +37,15 @@ def get_html(url):
 def save_to_csv(items, path):
     titels = list(items[0].keys())
     try:
-        with open(path, 'a', newline='', encoding='utf-8') as csv_file:
-            writer = csv.writer(csv_file, delimiter=';')
-            for item in items:
-                task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
-                writer.writerow(task)
-                print(f'Saving {task[-1]}')
-    except UnicodeEncodeError:
         with open(path, 'a', newline='') as csv_file:
             writer = csv.writer(csv_file, delimiter=';')
             for item in items:
                 task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
                 writer.writerow(task)
-                logging.info(f'Encode ERROR {task[-1]}')
-                print(f'Encode ERROR _________________________{task[-1]}')
-                print(f'Saving {task[-1]}')
-        
+                print(f'Saving {task[-2]}')
+    except UnicodeEncodeError as ue:
+        logging.info('SAVING ERROR: ', ue, items[-1])
+        print('SAVING ERROR: ', ue)
     print('Saving process have done')
 
 def read_csv(path):
@@ -133,15 +124,16 @@ def get_mode(url):
     try:
         p = wrapper.find('p').get_text()
     except:
+        p = 'None'
         logging.info(f'Dont find P ERROR {url}')
         print(f'Dont find P ERROR {url}')
 
     detail = soup.find('div', id='article-detail')
     field = soup.find('div', class_='row rowSpacer')
     try:
-        #span = clean_html(str(field.find_all('span')))
-        span = soup.find('span', {'title': 'SAP Code'}).get_text()
+        span = clean_html(str(field.find_all('span')))
     except AttributeError:
+        span = 'None'
         logging.info(f'Dont find SPAN ERROR {url}')
         print(f'Dont find SPAN ERROR {url}')
 
@@ -151,7 +143,7 @@ def get_mode(url):
             'Chapter 1': bc.find('span', id='breadcrumbs-2').find('a').get_text(),
             'Chapter 2': bc.find('span', id='breadcrumbs-3').find('a').get_text(),
             'Seria': bc.find('span', id='breadcrumbs-4').find('a').get_text(),
-            'Decripion of Seria': wrapper.find('p').get_text(),
+            'Decripion of Seria': p,
             'Version': bc.find('span', id='breadcrumbs-5').find('a').get_text(),
             'Description extra': span,
             'SAP Code': clean_html(str(detail.find('p').find('span', {'title': 'SAP Code'}).get_text())),
