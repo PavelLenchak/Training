@@ -6,6 +6,7 @@ import logging
 import re
 from fake_useragent import UserAgent
 import codecs
+import string, random
 
 HEADERS = {
     'user-agent': UserAgent().chrome}
@@ -14,6 +15,7 @@ DOCS_PATH = 'Parsing\\chandeliers\\docs'
 DOCS_FILE = 'Parsing\\chandeliers\\docs.csv'
 
 PRODICTS_FILE = 'Parsing\\chandeliers\\files\\products.csv'
+URLS = 'Parsing\\chandeliers\\files\\urls.csv'
 
 logging.basicConfig(filename='Parsing\\chandeliers\\download docs.csv', level=logging.INFO)
 
@@ -26,24 +28,29 @@ def get_html(url):
     req = requests.get(url, headers=HEADERS)
     return req
 
+def save_to_csv(path, item):
+    with open('Parsing\\chandeliers\\files\\urls.csv', 'a', newline='') as csv_file:
+            writer = csv.writer(csv_file, delimiter=';')
+            writer.writerow([item])
+
 def read_csv(path):
     urls = []
-    with codecs.open(path, 'r', 'utf-32') as file:
+    with open(path, 'r') as file:
         csv_reader = csv.reader(file, delimiter=';')
         for row in csv_reader:
-            urls.append(row[-1].replace(',', '.'))
-    print(len(urls))
-    sys.exit()
-        
+            url = row[0].replace(',', '.')
+            urls.append(url)
+            #save_to_csv('Parsing\\chandeliers\\files\\urls.csv',url)
+    return urls
 
 def save_docs(url, file_name, file_type, sap_code):
-    path = f'{DOCS_PATH}\{sap_code}'
-    if not os.path.exists(path):
-        os.mkdir(path)
+    # path = f'{DOCS_PATH}\{sap_code}'
+    # if not os.path.exists(path):
+    #     os.mkdir(path)
 
     #print(path)
     ufr = requests.get(url)
-    with open(f'{path}\{file_name}{file_type}',"wb") as file: #открываем файл для записи, в режиме wb
+    with open(f'{DOCS_PATH}\{sap_code}_{file_name}{file_type}',"wb") as file: #открываем файл для записи, в режиме wb
         file.write(ufr.content) #записываем содержимое в файл; как видите - content запроса
     
     with open(DOCS_FILE, 'a', newline='') as doc_file:
@@ -51,7 +58,7 @@ def save_docs(url, file_name, file_type, sap_code):
         items = [sap_code, f'{file_name}{file_type}']
         writer.writerow(items)
     
-    print('Записан файл {} {}'.format(sap_code, file_name))
+    print('Записан файл {}_{}'.format(sap_code, file_name))
     logging.info('Записан файл {} {}'.format(sap_code, file_name))
 
 def get_files(url):
@@ -59,6 +66,7 @@ def get_files(url):
     soup = BeautifulSoup(html.text, 'html.parser')
 
     sap_code = soup.find('div', id='article-detail').find('span', {'title': 'SAP Code'}).get_text()
+    #print(f'Парсим {sap_code}')
 # Ссылки на все документы страницы
     docs_url = []
     options = soup.find_all('div', class_='option')
@@ -71,19 +79,22 @@ def get_files(url):
     # # Сохрагяем файлы по ссылкам
     for dicti in docs_url:
         url = dicti['url']
-        print(url)
-        a = requests.get(url)
-        file_name = dicti['type'][:dicti['type'].find('(')-1]
-        print(dicti['type'])
+        #a = requests.get(url)
+        #file_name = dicti['type'][:dicti['type'].find('(')-1]
 
+        file_name = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
         type = dicti['type'][dicti['type'].find('.'):dicti['type'].find(')')]
         save_docs(url, file_name=file_name, file_type=type, sap_code=sap_code)
 
 
 
 def main():
-    read_csv(PRODICTS_FILE)
+    urls = read_csv(URLS)
+    counter = 0 
+    for url in urls:
+        if counter < 3:
+            get_files(url)
+        counter += 1
     
-
 if __name__ == '__main__':
     main()
