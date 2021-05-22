@@ -1,13 +1,16 @@
+from typing import Counter
 from bs4 import BeautifulSoup
 import requests
 import csv
 import os, sys
+from datetime import datetime
 import logging
 import re
 from fake_useragent import UserAgent
 import codecs
 import string, random
 from multiprocessing import Pool
+from progress.bar import IncrementalBar
 
 HEADERS = {
     'user-agent': UserAgent().chrome}
@@ -20,7 +23,10 @@ PRODICTS_FILE = 'Parsing\\chandeliers\\files\\products.csv'
 FIRST_PART = 'Parsing\\chandeliers\\files\\first_urls.csv'
 SECOND_PART = 'Parsing\\chandeliers\\files\\second_urls.csv'
 URLS = 'Parsing\\chandeliers\\files\\urls.csv'
-LAST_URLS = 'Parsing\\chandeliers\\files\\last_urls.csv'
+
+LAST_URLS = 'Parsing\\chandeliers\\files\\last_part.csv'
+SUPER_URLS = 'Parsing\\chandeliers\\files\\super_last.csv'
+ULTRA_LAST = 'Parsing\\chandeliers\\files\\ultra_last.csv'
 TEST_URL_TO_SAVE = 'D:\\Python\\docs'
 
 logging.basicConfig(filename='Parsing\\chandeliers\\download docs.csv', level=logging.INFO)
@@ -82,8 +88,10 @@ def get_files(url):
             'type': option.find('a', {'target': '_blank'}).get_text()
             })
     
+    bar = IncrementalBar('Progress', max = len(docs_url))
     # # Сохрагяем файлы по ссылкам
     for dicti in docs_url:
+        bar.next()
         url = dicti['url']
         #a = requests.get(url)
         #file_name = dicti['type'][:dicti['type'].find('(')-1]
@@ -91,10 +99,12 @@ def get_files(url):
         file_name = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(10))
         type = dicti['type'][dicti['type'].find('.'):dicti['type'].find(')')]
         save_docs(url, file_name=file_name, file_type=type, sap_code=sap_code)
+    bar.finish()
 
 
 def main():
-    urls = read_csv(URLS)
+    start = datetime.now()
+    urls = read_csv(ULTRA_LAST)
     # counter = 0 
     # for url in urls:
     #     if counter < 2:
@@ -104,5 +114,7 @@ def main():
     with Pool(40) as p:
         p.map(get_files, urls)
     
+    end = datetime.now()
+    print(f'Закончили выгрузку {end - start}')
 if __name__ == '__main__':
     main()
