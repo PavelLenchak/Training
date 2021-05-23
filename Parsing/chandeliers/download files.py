@@ -1,3 +1,4 @@
+from typing import Counter
 from bs4 import BeautifulSoup
 import requests
 import csv
@@ -12,6 +13,9 @@ from multiprocessing import Pool
 from progress.bar import IncrementalBar
 import io, logging
 
+global count
+count = 0
+
 logging.basicConfig(filename='Parsing\\chandeliers\\saving_process_logs.csv', level=logging.INFO)
 
 HEADERS = {
@@ -22,7 +26,7 @@ DOCS_FILE = 'Parsing\\chandeliers\\docs.csv'
 URLS = 'Parsing\\chandeliers\\files\\urls.csv'
 TEST_URL_TO_SAVE = 'D:\\Python\\docs'
 MAIN_FILE = 'Parsing\\chandeliers\\files\MAIN FILE.csv'
-SUB_FILE = 'Parsing\\chandeliers\\files\SUB FILE.csv'
+SUB_FILE = 'Parsing\\chandeliers\\SUB FILE.csv'
 
 def clean_html(raw_html):
     cleanr = re.compile('<.*?>')
@@ -44,7 +48,15 @@ def save_to_csv(items, path):
                 writer.writerow(task)
                 print(f'Saving {task[-2]}')
     except UnicodeEncodeError as ue:
-        logging.info('SAVING ERROR: ', ue, items[-1])
+        with open(path, 'a', newline='', encoding='utf-8') as csv_file:
+            writer = csv.writer(csv_file, delimiter=';')
+            for item in items:
+                task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
+                writer.writerow(task)
+                print(f'Saving {task[-2]}')
+        print(items)
+        raise f'SAVING ERROR {ue}'
+        logging.info('SAVING ERROR: ', ue)
         print('SAVING ERROR: ', ue)
     print('Saving process have done')
 
@@ -122,20 +134,22 @@ def get_mode(url):
         print(f'Find WRAPPER ERROR {url}')
 
     try:
+        # Описание серии
         p = wrapper.find('p').get_text()
     except:
         p = 'None'
         logging.info(f'Dont find P ERROR {url}')
-        print(f'Dont find P ERROR {url}')
+        #print(f'Dont find P ERROR {url}')
 
     detail = soup.find('div', id='article-detail')
     field = soup.find('div', class_='row rowSpacer')
     try:
+        # Доп описание
         span = clean_html(str(field.find_all('span')))
     except AttributeError:
         span = 'None'
         logging.info(f'Dont find SPAN ERROR {url}')
-        print(f'Dont find SPAN ERROR {url}')
+        #print(f'Dont find SPAN ERROR {url}')
 
     bread_crumbs = []
     for bc in all_bread_crumbs:
@@ -147,7 +161,7 @@ def get_mode(url):
             'Version': bc.find('span', id='breadcrumbs-5').find('a').get_text(),
             'Description extra': span,
             'SAP Code': clean_html(str(detail.find('p').find('span', {'title': 'SAP Code'}).get_text())),
-            'URL': url,
+            'URL': clean_html(url.replace(',', '.')),
         })
         
     # print(bread_crumbs)
@@ -165,11 +179,11 @@ def main():
     #         get_files(url)
     #     counter += 1
 
-    # for url in urls:
-    #     get_mode(url)
+    for url in urls:
+        get_mode(url)
 
-    with Pool(40) as p:
-        p.map(get_mode, urls)
+    # with Pool(40) as p:
+    #     p.map(get_mode, urls)
 
     # with Pool(40) as p:
     #     p.map(get_files, urls)
