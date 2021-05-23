@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from typing import Counter
 from bs4 import BeautifulSoup
 import requests
@@ -12,9 +14,6 @@ import string, random
 from multiprocessing import Pool
 from progress.bar import IncrementalBar
 import io, logging
-
-global count
-count = 0
 
 logging.basicConfig(filename='Parsing\\chandeliers\\saving_process_logs.csv', level=logging.INFO)
 
@@ -35,30 +34,35 @@ def clean_html(raw_html):
 
 def get_html(url):
     req = requests.get(url, headers=HEADERS)
+    req.encoding = 'utf8'
     return req
 
 #[{ }]
 def save_to_csv(items, path):
     titels = list(items[0].keys())
-    try:
-        with open(path, 'a', newline='') as csv_file:
-            writer = csv.writer(csv_file, delimiter=';')
-            for item in items:
-                task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
-                writer.writerow(task)
-                print(f'Saving {task[-2]}')
-    except UnicodeEncodeError as ue:
-        with io.open(path, 'a', newline='', encoding='utf-8') as csv_file:
-            writer = csv.writer(csv_file, delimiter=';')
-            for item in items:
-                task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
-                writer.writerow(task)
-                print(f'Saving {task[-2]}')
-        print(items)
-        logging.info('SAVING ERROR: ', ue)
-        raise f'SAVING ERROR {ue}'
-        print('SAVING ERROR: ', ue)
-    print('Saving process have done')
+    # try:
+    with open(path, 'a', newline='') as csv_file:
+        writer = csv.writer(csv_file, delimiter=';')
+        for item in items:
+            task = [str(item[titels[i]]) for i in range(len(titels))]
+            row_to_save = [re.sub('[^A-Z a-z А-Я а-я 0-9 .\/;:-]', '', str(task))]
+            print(row_to_save)
+            writer.writerow(row_to_save)
+        print(f'Saving {task[-2]}')
+    # except UnicodeEncodeError as ue:
+    #     with io.open(path, 'a', newline='',encoding='utf-8') as csv_file:
+    #         writer = csv.writer(csv_file, delimiter=';')
+    #         for item in items:
+    #             task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
+    #             if type(task) != list or 'html' not in task:
+    #                 writer.writerow([re.sub(r'[^A-zА-я0-9]', '', str(task))])
+    #             else:
+    #                 writer.writerow(task)
+
+                # print(f'Saving {task[-2]}')
+        # logging.info('SAVING ERROR: ', ue)
+        # print('SAVING ERROR: ', ue)
+    print(f'Saving process have done')
 
 def read_csv(path):
     urls = []

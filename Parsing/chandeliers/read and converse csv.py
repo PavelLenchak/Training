@@ -1,32 +1,26 @@
+# -*- coding: utf-8 -*-
 import csv
-import codecs
-from datetime import date, datetime
+import re
+test = 'Parsing\\chandeliers\\test.csv'
+a = ['Наружное освещение', 
+'Настенные светильники', 
+'EyeKon', 
+'Круглый вандалозащищенный светильник для 1 ламп 42 Вт Источник света: 1 x TC-TELI / 42W с балластом Комбинированный HF и EM SC и 3-часовым аварийным ручным тестированием. Электр. класс I, IP65, IK10.  Корпус, размер крупный, литой Алюминий (LM6), с порошковым покрытием черный.  Рассеиватель опаловый Поликарбонат (PC). С литой Алюминий защитный козырек (функция). Для настенного монтажа, электрическое подключение к клеммному блоку 4 x 2 x 2,5 мм².  {Energy Saving Option} Лампы заказываются отдельно.Размеры: Ø340 x 155 mmНоминальная мощность: 50 WМасса: 3,6 kg', 'Eyekon Large, аварийная версия с козырьком, черный', 
+'[Положение лампы:,STD - стандартный, Источник света:, 1 x TC-TELI / 42W, Световой поток светильника*:, 570 lm, Номинальный световой поток лампы:, 1 x 3200 lm, Полный световой поток в аварийном режиме:, 570 lm, КПД светильника*:,11 lm/W, Эффективность ламп:, 64 lm/W, Степень цветопередачи мин.:, 80, ПРА:, 1 x 89899931 , Номинальная мощность*:, 50 W Коэффициент мощности = 0,95, Зарядная мощность:, 5 W]', 
+'96206579', 'http://www.thornlighting.ru/ru-ru/produkty/naruzhnoie-osvieshchieniie/nastiennyie-svietilniki/EyeKon/eyekon-large-avariinaia-viersiia-s-kozyrkom-chiernyi/96206579']
+# print(a)
+string = ''.join(a)
+# print(len(string))
+# print(string[759:762])
 
-FILE_TO_READ = 'Parsing\\chandeliers\\files\\products.csv'
+po = 'Круглый вандалозащищенный светильник для 1 ламп 42 Вт Источник света: 1 x TC-TELI / 42W с балластом Комбинированный HF и EM SC и 3-часовым аварийным ручным тестированием. Электр. класс I, IP65, IK10.  Корпус, размер крупный, литой Алюминий (LM6), с порошковым покрытием черный.  Рассеиватель опаловый Поликарбонат (PC). С литой Алюминий защитный козырек (функция). Для настенного монтажа, электрическое подключение к клеммному блоку 4 x 2 x 2,5 мм².  {Energy Saving Option} Лампы заказываются отдельно.Размеры: Ø340 x 155 mmНоминальная мощность: 50 WМасса: 3,6 kg'
 
-def save_to_csv(path, item):
-    with open('Parsing\\chandeliers\\files\\urls.csv', 'a', newline='') as csv_file:
-            writer = csv.writer(csv_file, delimiter=';')
-            writer.writerow([item])
-
-def read_csv(path):
-    urls = []
-    with codecs.open(path, 'r', encoding='utf-32') as file:
-        csv_reader = csv.reader(file, delimiter=';')
-        for row in csv_reader:
-            print(len(row))
-            # url = row[0].replace(',', '.')
-            # urls.append(url)
-            # save_to_csv('Parsing\\chandeliers\\files\\urls.csv',url)
-    # return urls
-
-
-def main():
-    print('Script starting')
-    start = datetime.now()
-    read_csv(FILE_TO_READ)
-    end = datetime.now()
-    print(f'Script have done. Time passed:{end-start}')
-
-if __name__ == '__main__':
-    main()
+with open(test, 'a', newline='') as file:
+    writer = csv.writer(file, delimiter=';')
+    for item in a:
+        task = [re.sub('[^A-Z a-z А-Я а-я 0-9 .\/;:-]', '', item)]
+        print(task)
+        writer.writerow(task)
+        # \/:*?"<>|
+        # [^A-Za-z]
+    print(f'Saving {a[-2]}')
