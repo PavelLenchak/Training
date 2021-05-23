@@ -48,15 +48,15 @@ def save_to_csv(items, path):
                 writer.writerow(task)
                 print(f'Saving {task[-2]}')
     except UnicodeEncodeError as ue:
-        with open(path, 'a', newline='', encoding='utf-8') as csv_file:
+        with io.open(path, 'a', newline='', encoding='utf-8') as csv_file:
             writer = csv.writer(csv_file, delimiter=';')
             for item in items:
                 task = [str(item[titels[i]]).replace('.', ',') for i in range(len(titels))]
                 writer.writerow(task)
                 print(f'Saving {task[-2]}')
         print(items)
-        raise f'SAVING ERROR {ue}'
         logging.info('SAVING ERROR: ', ue)
+        raise f'SAVING ERROR {ue}'
         print('SAVING ERROR: ', ue)
     print('Saving process have done')
 
