@@ -29,6 +29,7 @@ MAIN_FILE = 'Parsing\\chandeliers\\to post\\MAIN FILE.csv'
 SUB_FILE = 'Parsing\\chandeliers\\SUB FILE.csv'
 
 TO_PARSING = 'Parsing\\chandeliers\\files\\to_parsing.csv'
+NOT_FIND = 'Parsing\\chandeliers\\files\\not_find.csv'
 
 def clean_html(raw_html):
     cleanr = re.compile('<.*?>')
@@ -97,7 +98,10 @@ def get_files(url):
     soup = BeautifulSoup(html.text, 'html.parser')
 
     detail = soup.find('div', id='article-detail')
-    sap_code = clean_html(str(detail.find('p').find('span', {'title': 'SAP Code'}).get_text()))
+    try:
+        sap_code = clean_html(str(detail.find('p').find('span', {'title': 'SAP Code'}).get_text()))
+    except:
+        sap_code = url[:-8]
 
     #sap_code = soup.find('div', id='article-detail').find('span', {'title': 'SAP Code'}).get_text()
     print(f'Парсим {sap_code}')
@@ -177,12 +181,12 @@ def get_mode(url):
 
 def main():
     start = datetime.now()
-    urls = read_csv(MAIN_FILE)
-    counter = 0 
-    for url in urls:
-        if counter < 2:
-            get_files(url)
-        counter += 1
+    urls = read_csv(NOT_FIND)
+    # counter = 0 
+    # for url in urls:
+    #     if counter < 2:
+    #         get_files(url)
+    #     counter += 1
 
     # bar = IncrementalBar('Progress', max = len(urls))
     # for url in urls:
@@ -192,8 +196,8 @@ def main():
     # with Pool(cpu_count()) as p:
     #     p.map(get_mode, urls)
 
-    # with Pool(40) as p:
-    #     p.map(get_files, urls)
+    with Pool(40) as p:
+        p.map(get_files, urls)
     
     end = datetime.now()
     print(f'Закончили выгрузку {end - start}')
