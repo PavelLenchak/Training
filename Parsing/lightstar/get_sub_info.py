@@ -3,13 +3,33 @@ import fake_useragent
 import requests
 from bs4 import BeautifulSoup
 import fake_useragent
+import random, string
 
-PATH = 'Parsing\\lightstar\\lightstar.csv'
+PATH = 'Parsing\\lightstar\\to post\\lightstar.csv'
 CSV_FILE = 'Parsing\\lightstar\\sub_info.csv'
+TO_SACE_DOCS = 'D:\\Python\\lightstart docs'
+DOCS_FILE = 'Parsing\\lightstar\\docs.csv'
 
 HEADERS = {
     'user-agent': fake_useragent.UserAgent().chrome,
 }
+
+def save_url(url, file_name):
+    ufr = requests.get(url)
+    type = '.' + url.split('.')[-1]
+    # print(type)
+    # print(file_name)
+    # sys.exit()
+    with open(f'{TO_SACE_DOCS}\{file_name}{type}',"wb") as file: #открываем файл для записи, в режиме wb
+        file.write(ufr.content) #записываем содержимое в файл; как видите - content запроса
+    
+    with open(DOCS_FILE, 'a', newline='') as doc_file:
+        writer = csv.writer(doc_file, delimiter=';')
+        items = [file_name.split('_')[0], f'{file_name}{type}', url]
+        writer.writerow(items)
+    
+    print('Записан файл {}'.format(file_name))
+    #logging.info('Записан файл {}_{} {}'.format(sap_code, file_name, url))
 
 def save_to_csv(items):
     #print(f'Start saving process')
@@ -17,9 +37,15 @@ def save_to_csv(items):
     with open(CSV_FILE, 'a', newline='') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         for item in items:
-            task = [str(item[titels[i]]) for i in range(len(titels))]
+            task =[]
+            for i in range(len(titels)):
+                if type(item[titels[i]]) == list:
+                    task.append('; '.join(item[titels[i]]))
+                else:
+                    task.append(item[titels[i]])
+            #task = [str(item[titels[i]]) for i in range(len(titels))]
             writer.writerow(task)
-            print(f'Saving {task[0]}')
+            #print(f'Saving {task[0]}')
     print('Saving process have done')
 
 def read_csv(path):
@@ -51,21 +77,32 @@ def get_content(url):
     datas = []
     chapters = [i.get_text() for i in li]
     details = [i.get_text() for i in div]
-    files = ''
-    for i in a:
-        files = i.find('a').get('href')
-    print(files)
+    
+    # print(files)
     datas.append({
         'Chapters': chapters,
         'Detail': details,
         'URL': url,
-        'Files': files,
+        #'Files': files,
     })
-    save_to_csv(datas)
-    
+    # save_to_csv(datas)
+
+    files = []
+    for i in a:
+        files.append(
+            i.find('a', class_='tab__icon').get('href')
+        )
+
+    f_n = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(5))
+    id = datas[0]['Chapters'][-1].split(' ')[-1]
+    file_name = id + '_' + f_n
+    for url in files:
+        save_url(url, file_name)
+
 
 def main():
     urls = read_csv(PATH)
+    print(len(urls))
     for url in urls:
         get_content(url)
 
