@@ -11,6 +11,7 @@ PATH = 'Parsing\\lightstar\\to post\\lightstar.csv'
 CSV_FILE = 'Parsing\\lightstar\\sub_info.csv'
 TO_SAVE_DOCS = 'D:\\Python\\lightstart docs'
 DOCS_FILE = 'Parsing\\lightstar\\docs.csv'
+TO_URLS = 'Parsing\\lightstar\\to post\\urls.csv'
 
 HEADERS = {
     'user-agent': fake_useragent.UserAgent().chrome,
@@ -84,8 +85,12 @@ def get_content(url):
     soup = BeautifulSoup(html.text, 'html.parser')
     li = soup.find_all('li', class_='breadcrumb__item')
     div = soup.find_all('div', class_='specification__wrapper')
-    a = soup.find('section', class_='tab__panel tab__panel--icon').find_all('a', class_='tab__icon')
-
+    # try:
+    #     a = soup.find('section', class_='tab__panel tab__panel--icon').find_all('a', class_='tab__icon')
+    # except AttributeError:
+    #     print(f'{url} dont have documents')
+    #     pass
+    # else:
     datas = []
     chapters = [i.get_text() for i in li]
     details = [i.get_text() for i in div]
@@ -99,28 +104,27 @@ def get_content(url):
     })
     save_to_csv(datas)
 
-    files = []
-    for i in a:
-        files.append(
-            i.get('href')
-        )
+        # files = []
+        # for i in a:
+        #     files.append(
+        #         i.get('href')
+        #     )
 
-    
-    for url in files:
-        f_n = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(5))
-        id = datas[0]['Chapters'][-1]
-        file_name = id + '_' + f_n
-        save_url(url, file_name)
+        
+        # for url in files:
+        #     f_n = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(5))
+        #     id = datas[0]['Chapters'][-1]
+        #     file_name = id + '_' + f_n
+        #     save_url(url, file_name)
 
 
 def main():
-    urls = read_csv(PATH)
-    # print(len(urls))
-    # for url in urls:
-    #     get_content(url)
+    urls = read_csv(TO_URLS)
+    for url in urls:
+        get_content(url)
 
-    with Pool(cpu_count()) as p:
-        p.map(get_content, urls)
+    # with Pool(cpu_count()) as p:
+    #     p.map(get_content, urls)
 
 
 if __name__ == '__main__':

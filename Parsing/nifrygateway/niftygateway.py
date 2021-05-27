@@ -1,3 +1,12 @@
+
+# niftygateway.py
+
+"""
+    Парсинг сайта https://niftygateway.com/marketplace
+    Используются библиотеки requests, bs4, csv
+    Собираем информацию через запросы requests.get ... requests.post
+"""
+
 import sys
 from time import sleep
 from datetime import datetime
@@ -5,8 +14,20 @@ import requests
 import csv
 from fake_useragent import UserAgent
 from multiprocessing import Pool
+from multiprocessing import cpu_count
 import logging
 import traceback
+import logging
+
+logging.basicConfig(
+    format='%(asctime)s %(levelname)s:%(name)s: %(message)s',
+    level=logging.DEBUG,
+    datefmt='%H:%M:%S',
+    stream=sys.stderr
+)
+logger = logging.getLogger('niftygateway')
+logging.getLogger('chardet.charsetprober').disabled =True
+
 
 EDITIONS_F_CSV = 'Parsing\\nifrygateway\\editions_first.csv'
 EDITIONS_S_CSV = 'Parsing\\nifrygateway\\editions_second.csv'
@@ -281,10 +302,41 @@ def events(adress_and_type):
         # for key, value in data['data']['results'][0].items():
         #     print(f'{key}: {value}')
 
+def parse(url):
+    try:
+        html = get_html(url)
+    except Exception as e:
+        logger.exception(
+            'http exeption for %s [%s]: %s',
+            url,
+            getattr(e, 'status', None),
+            getattr(e, 'message', None)
+        )
+    else:
+        return html
+
+
+def save_file(url, file_path):
+    items = parse(url=url)
+    if not items:
+        return None
+    else:
+        titels = list(items[0].keys())
+        with open(file_path, 'a', newline='', encoding='utf-8') as csv_file:
+            writer = csv.writer(csv_file, delimiter=';')
+            #writer.writerow(titels)
+            #print(titels)
+            for item in items:
+                task = [item[titels[i]] for i in range(len(titels))]
+                writer.writerow(task)
+    
+
 
 def main():
     logging.info("Program started")
     start = datetime.now()
+
+    save_file(OPEN_REQ, EDITIONS_F_CSV)
 
     # editins_first.csv
     #edition_first()
