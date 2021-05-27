@@ -1,4 +1,4 @@
-
+# -*- coding: utf-8 -*-
 # niftygateway.py
 
 """
@@ -7,7 +7,9 @@
     Собираем информацию через запросы requests.get ... requests.post
 """
 
-import sys
+import os, sys
+import pathlib
+from pathlib import Path
 from time import sleep
 from datetime import datetime
 import requests
@@ -16,41 +18,42 @@ from fake_useragent import UserAgent
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 import logging
-import traceback
-import logging
 
-logging.basicConfig(
-    format='%(asctime)s %(levelname)s:%(name)s: %(message)s',
-    level=logging.DEBUG,
-    datefmt='%H:%M:%S',
-    stream=sys.stderr
-)
-logger = logging.getLogger('niftygateway')
-logging.getLogger('chardet.charsetprober').disabled =True
+logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
 
-
+# Файлы для сохранения данных
 EDITIONS_F_CSV = 'Parsing\\nifrygateway\\editions_first.csv'
 EDITIONS_S_CSV = 'Parsing\\nifrygateway\\editions_second.csv'
 EVENTS_CSV = 'Parsing\\nifrygateway\\events.csv'
 
+# OPEN_REQ - запрос на сервер для получения информации о художниках и их коллекций (GET запрос)
+# QUERY_REQ - запрос для получения информации по каждому nifty (GET запрос)
+# EVENTS_REQ - запрос для получения данных по истории событий (POST запрос)
 OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
 QUERY_REQ= 'https://api.niftygateway.com//already_minted_nifties/?searchQuery=%3Fpage%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:1,%22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D'
-NIFTY_REQ ='https://api.niftygateway.com//market/nifty-history-by-type/'
 EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
 
-#   https://api.niftygateway.com//market/nifty-history-by-type/
 test = 'https://niftygateway.com/itemdetail/secondary/0x68c4dd3f302c449be39af528d56c6bd242b8cedb/23600030038'
-logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
 
+# Заголовки - для идентификации как живой человек
 HEADERS = {
     'user-agent': UserAgent().chrome
 }
 
-
+# Получения общего кол-ва страниц для парсинга QUERY_REQ (информация по каждому nifty)
 def get_total_pages():
     iquery= get_html(QUERY_REQ, params={'current':1})
     total_pages = iquery['data']['meta']['total_pages']
     return total_pages
+
+# Получем данные по запросу 
+def get_html(url, params=''):
+    try:
+        response = requests.get(url, headers=HEADERS, params=params)
+        data=response.json()
+        return data
+    except:
+        print('Loadnig ERROR: {}'.format(response))
 
 
 def save_csv(items, path, titels):
@@ -64,100 +67,7 @@ def save_csv(items, path, titels):
             writer.writerow(task)
 
 
-def get_html(url, params=''):
-    try:
-        response = requests.get(url, params=params)
-        data=response.json()
-        return data
-    except:
-        print('Loadnig ERROR: {}'.format(response))
-        sys.exit()
-
-
-def get_first_edition(items):
-    niftys = []
-    for item in items:
-        for nifty in item['nifties']:
-            niftys.append(
-                {
-                    'Artist': item['userProfile']['name'],
-                    'Collection Name': item['storeName'],
-                    'Collection Type': item['template'],
-                    'Edition Name': nifty['niftyTitle'],
-                    'Edition Type': nifty['niftyType'],
-                    'Edition Total Size': nifty['niftyTotalNumOfEditions'],
-                    'Contract Address': nifty['niftyContractAddress'],
-                }
-            )
-
-    #проверяем данные
-    # for nift in niftys:
-    #     print(nift, sep='\n')
-    # for item in items[0]['nifties']:
-    #     print(item['niftyTitle'])
-    return niftys
-
-        
-def get_sec_edition(items, page):
-    datas = []
-    print('Scrapping #{}'.format(page))
-    try:
-        for item in items['data']['results']:
-            # Выдергиваем число между # и / - есть не во всех названиях
-            ed_number = item['name'][item['name'].find('#'):item['name'].find('/')]
-            datas.append(
-                {
-                    'Collection name': item['project_name'],
-                    'Contract Address': item['contract_address'],
-                    'Edition number': item['name'],
-                    'Token id': item['token_id_or_nifty_type'],
-                    'Owner_id': item['owner_profile_id'],
-                }
-            )
-    except KeyError:
-        print('KeyError {} {}'.format(page, items))
-    # проверяем данные
-    # for item in items['data']['results']:
-    #     print(item)
-    #     for i in item:
-    #         print(i)
-    logging.info("Done page - {}".format(page))
-    return datas
-
-
-def edition_first():
-    print('start EDITION FIRST')
-    datas = []
-    items = get_html(OPEN_REQ)
-    datas.extend(get_first_edition(items))
-    titels = list(datas[0].keys())
-    save_csv(datas, EDITIONS_F_CSV, titels)
-
-
-def editions_second(page):
-    datas = []
-    try:
-        items_query= get_html(QUERY_REQ, params={'current':page})
-        datas.extend(get_sec_edition(items_query, page))
-        titels = list(datas[0].keys())
-        save_csv(datas, EDITIONS_S_CSV, titels)
-    except IndexError:
-        #print('ERROR {} - {}'.format(datas, page))
-        logging.info("INDEX ERROR - {}".format(page))
-    except Exception:
-        detail = items_query['detail']
-        if 'Request was throttled.' in detail:
-            t = int(detail[-10])
-            print(t)
-            sleep(t)
-            items_query= get_html(QUERY_REQ, params={'current':page})
-            datas.extend(get_sec_edition(items_query, page))
-            titels = list(datas[0].keys())
-            save_csv(datas, EDITIONS_S_CSV, titels)
-        
-        
-
-def events(adress_and_type):
+def get_events(adress_and_type):
     main_data = []
     adress = adress_and_type[0]
     nifty_type = adress_and_type[1]
@@ -289,9 +199,9 @@ def events(adress_and_type):
                     'Price': str(price)
                 })
                 titels = list(main_data[0].keys())
-    except Exception:
+    except Exception as e:
         #print(data)
-        logging.info('Ошибка на странице {} - {} {}'.format(page, adress, nifty_type))
+        logging.info('Ошибка на странице {} {} - {} {}'.format(e, page, adress, nifty_type))
 
     
     save_csv(main_data, EVENTS_CSV, titels)
@@ -302,67 +212,123 @@ def events(adress_and_type):
         # for key, value in data['data']['results'][0].items():
         #     print(f'{key}: {value}')
 
-def parse(url):
+
+def get_sec_edition(items, page):
+    datas = []
+    print('Scrapping second edditions page# {}'.format(page))
     try:
-        html = get_html(url)
-    except Exception as e:
-        logger.exception(
-            'http exeption for %s [%s]: %s',
-            url,
-            getattr(e, 'status', None),
-            getattr(e, 'message', None)
-        )
-    else:
-        return html
+        for item in items['data']['results']:
+            # Если нужно получить число между # и / в item['name'] - есть не во всех названиях
+            ed_number = item['name'][item['name'].find('#'):item['name'].find('/')]
+            datas.append(
+                {
+                    'Collection name': item['project_name'],
+                    'Contract Address': item['contract_address'],
+                    'Edition number': item['name'],
+                    'Token id': item['token_id_or_nifty_type'],
+                    'Owner_id': item['owner_profile_id'],
+                }
+            )
+    except KeyError:
+        print('KeyError {} {}'.format(page, items))
+    # проверяем данные
+    # for item in items['data']['results']:
+    #     print(item)
+    #     for i in item:
+    #         print(i)
+    logging.info("Done page - {}".format(page))
+    return datas
 
 
-def save_file(url, file_path):
-    items = parse(url=url)
-    if not items:
-        return None
-    else:
-        titels = list(items[0].keys())
-        with open(file_path, 'a', newline='', encoding='utf-8') as csv_file:
-            writer = csv.writer(csv_file, delimiter=';')
-            #writer.writerow(titels)
-            #print(titels)
-            for item in items:
-                task = [item[titels[i]] for i in range(len(titels))]
-                writer.writerow(task)
+def editions_second(page):
+    datas = []
+    try:
+        items_query= get_html(QUERY_REQ, params={'current':page})
+        datas.extend(get_sec_edition(items_query, page))
+        titels = list(datas[0].keys())
+        save_csv(datas, EDITIONS_S_CSV, titels)
+    except IndexError:
+        #print('ERROR {} - {}'.format(datas, page))
+        logging.info("INDEX ERROR - {}".format(page))
+    except Exception:
+        detail = items_query['detail']
+        if 'Request was throttled.' in detail:
+            t = int(detail[-10])
+            print(t)
+            sleep(t)
+            items_query= get_html(QUERY_REQ, params={'current':page})
+            datas.extend(get_sec_edition(items_query, page))
+            titels = list(datas[0].keys())
+            save_csv(datas, EDITIONS_S_CSV, titels)
+
+
+def get_first_edition(items):
+    niftys = []
+    for item in items:
+        for nifty in item['nifties']:
+            niftys.append(
+                {
+                    'Artist': item['userProfile']['name'],
+                    'Collection Name': item['storeName'],
+                    'Collection Type': item['template'],
+                    'Edition Name': nifty['niftyTitle'],
+                    'Edition Type': nifty['niftyDisplayImage'].split('.')[-1],
+                    'Nifty Type': nifty['niftyType'],
+                    'Edition Total Size': nifty['niftyTotalNumOfEditions'],
+                    'Contract Address': nifty['niftyContractAddress'],
+                }
+            )
+    #проверяем данные
+    # for nift in niftys:
+    #     print(nift, sep='\n')
+    # for item in items[0]['nifties']:
+    #     print(item['niftyTitle'])
+    return niftys
+
+
+def edition_first():
+    print('start EDITION FIRST')
+    datas = []
+    items = get_html(OPEN_REQ)
+    datas.extend(get_first_edition(items))
+    titels = list(datas[0].keys())
+    save_csv(datas, EDITIONS_F_CSV, titels)
     
 
-
 def main():
-    logging.info("Program started")
     start = datetime.now()
+    logging.info(f"Program started at {start}")
 
-    save_file(OPEN_REQ, EDITIONS_F_CSV)
+    # Парсим данные по каждому художнику
+    edition_first()
 
-    # editins_first.csv
-    #edition_first()
+    # Парсим данные по каждому nifty
+    tp = get_total_pages()
+    total_pages = list(range(1, tp+1))
+    logging.info("Total pages {}".format(tp))
+    #total_pages = list(range(1,11))
+    # Создаём пулл задач для перехода по старницам в многопотоности
+    with Pool(cpu_count()) as p:
+        p.map(editions_second, total_pages)
 
-    # editions_second.csv
-    # tp = get_total_pages()
-    # total_pages = list(range(1, tp+1))
-    # logging.info("Total pages {}".format(tp))
-    # #total_pages = list(range(1,11))
-    # with Pool(50) as p:
-    #     p.map(editions_second, total_pages)
-
-    # events.csv
+    # Парсим информацию по историям покупок - продаж
     items = get_html(OPEN_REQ)
     adress_and_type = get_first_edition(items)
     adress_and_type_to_parsing = []
     for item in adress_and_type:
-        adress_and_type_to_parsing.append([item['Contract Address'], item['Edition Type']])
+        adress_and_type_to_parsing.append([item['Contract Address'], item['Nifty Type']])
+    print(adress_and_type_to_parsing)
+    print(len(adress_and_type_to_parsing))
+    sys.exit()
     
-    with Pool(5) as p:
-        p.map(events, adress_and_type_to_parsing)
+    # with Pool(cpu_count()) as p:
+    #     p.map(get_events, adress_and_type_to_parsing)
 
     end = datetime.now()
     total = end - start
     print('Total time: {}'.format(str(total)))
     logging.info("Program end. Total time - {}".format(total))
+
 
 if __name__ == '__main__':
     main()
