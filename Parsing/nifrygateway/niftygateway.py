@@ -18,6 +18,7 @@ from fake_useragent import UserAgent
 from multiprocessing import Pool
 from multiprocessing import cpu_count
 import logging
+import random
 
 logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
 
@@ -40,6 +41,18 @@ HEADERS = {
     'user-agent': UserAgent().chrome
 }
 
+PROXIES = [
+    '91.193.253.188:23500',
+    '176.9.119.170:3128',
+    '176.9.75.42:3128',
+    '88.198.24.108:8080',
+    '95.141.193.35:80',
+    '176.9.75.42:8080',
+    '95.141.193.14:80',
+    '5.252.161.48:8080',
+    '176.9.119.170:3128',
+]
+
 # Получения общего кол-ва страниц для парсинга QUERY_REQ (информация по каждому nifty)
 def get_total_pages():
     iquery= get_html(QUERY_REQ, params={'current':1})
@@ -57,7 +70,6 @@ def get_html(url, params=''):
 
 
 def save_csv(items, path, titels):
-    # a - append для возможности многопроцессорности
     with open(path, 'a', newline='', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         #writer.writerow(titels)
@@ -68,11 +80,12 @@ def save_csv(items, path, titels):
 
 
 def get_events(adress_and_type):
+    proxy = random.choice(PROXIES)
     main_data = []
     adress = adress_and_type[0]
     nifty_type = adress_and_type[1]
 
-    response = requests.post(EVENTS_REQ, data={
+    response = requests.post(EVENTS_REQ, proxies={'http': 'http://' + proxy}, data={
         "contractAddress": adress,
         "niftyType": nifty_type,
         "current":1,
@@ -81,19 +94,30 @@ def get_events(adress_and_type):
     })
     data = response.json()
 
-    try:
-        total_pages = data['data']['meta']['page']['total_pages'] + 1
-        print('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
-        for page in range(1, total_pages):
-            response = requests.post(EVENTS_REQ, data={
-                "contractAddress":adress,
-                "niftyType":nifty_type,
-                "current":page,
-                "size":10,
-                "onlySales":"false"})
-            data = response.json()
-            
-            for d in data['data']['results']:
+    # try:
+    total_pages = data['data']['meta']['page']['total_pages'] + 1
+    print('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
+    for page in range(1, total_pages):
+        response = requests.post(EVENTS_REQ, data={
+            "contractAddress":adress,
+            "niftyType":nifty_type,
+            "current":page,
+            "size":10,
+            "onlySales":"false"})
+        data = response.json()
+
+        try:
+            data_results = data['data']['results']
+        except Exception as e:
+            print(data['detail'][-10])
+            t = data['detail'][-10]
+            print(f'Засыпаем на {t} секунд')
+            sleep(t)
+            get_events([adress, nifty_type])
+            # print(f'Dont find data results {data} {adress} {nifty_type} {page}')
+            # logging.info(f'ERROR Dont find data results {data} {adress} {nifty_type} {page}')
+        else:
+            for d in data_results:
                 #print(d, sep='\n')
                 action = d['Type']
                 time = ''
@@ -120,67 +144,67 @@ def get_events(adress_and_type):
                 if action == 'offer':
                     id = d['id'] #d['UnmintedNiftyObj']['niftyTitle'] #'None'
                     token_id = 'None'
-                    user1 = d['ListingUserProfile']['name']
-                    user2 = 'None'
+                    #user1 = d['ListingUserProfile']['name']
+                    #user2 = 'None'
                     user1_id = d['ListingUserProfile']['id']
                     user2_id = 'None'
                     price = d['OfferAmountInCents'] * 0.01
                 elif action == 'listing':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    user1 = d['ListingUserProfile']['name']
-                    user2 = 'None'
+                    #user1 = d['ListingUserProfile']['name']
+                    #user2 = 'None'
                     user1_id = d['ListingUserProfile']['id']
                     user2_id = 'None'
                     price = d['ListingAmountInCents'] * 0.01
                 elif action == 'birth':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    user1 = d['BirthingUserProfile']['name']
-                    user2 = 'None'
+                    #user1 = d['BirthingUserProfile']['name']
+                    #user2 = 'None'
                     user1_id = d['BirthingUserProfile']['id']
                     user2_id = 'None'
                     price = 'None'
                 elif action == 'withdrawal':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    user1 = d['WithdrawingUserProfile']['name']
-                    user2 = 'None'
+                    #user1 = d['WithdrawingUserProfile']['name']
+                    #user2 = 'None'
                     user1_id = d['WithdrawingUserProfile']['id']
                     user2_id = 'None'
                     price = 'None'
                 elif action == 'nifty_transfer':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    user1 = d['SendingUserProfile']['name']
-                    user2 = d['ReceivingUserProfile']['name']
+                    #user1 = d['SendingUserProfile']['name']
+                    #user2 = d['ReceivingUserProfile']['name']
                     user1_id = d['SendingUserProfile']['id']
                     user2_id = d['ReceivingUserProfile']['id']
                     price = 'None'
                 elif action == 'sale':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
-                    user1 = d['SellingUserProfile']['name']
-                    user2 = d['PurchasingUserProfile']['name']
+                    #user1 = d['SellingUserProfile']['name']
+                    #user2 = d['PurchasingUserProfile']['name']
                     user1_id = d['SellingUserProfile']['id']
                     user2_id = d['PurchasingUserProfile']['id']
                     price = d['SaleAmountInCents'] * 0.01
                 elif action == 'bid':
                     id = d['id']
                     token_id = 'None'
-                    user1 = d['BiddingUserProfile']['name']
-                    user2 = 'None'
+                    #user1 = d['BiddingUserProfile']['name']
+                    #user2 = 'None'
                     user1_id = d['BiddingUserProfile']['id']
                     user2_id = 'None'
                     price = d['BidAmountInCents'] * 0.01
                 else:
-                    print(action)
+                    print(f'New action: {action}')
                     #print(d['BiddingUserProfile'])
                     #print(d['NiftyObject'])
                     id = 'None'
                     token_id = 'NEW ACTION' + action + adress + nifty_type
-                    user1 = 'None'
-                    user2 = 'None'
+                    #user1 = 'None'
+                    #user2 = 'None'
                     user1_id = 'None'
                     user2_id = 'None'
                     price = 'None'
@@ -199,11 +223,7 @@ def get_events(adress_and_type):
                     'Price': str(price)
                 })
                 titels = list(main_data[0].keys())
-    except Exception as e:
-        #print(data)
-        logging.info('Ошибка на странице {} {} - {} {}'.format(e, page, adress, nifty_type))
 
-    
     save_csv(main_data, EVENTS_CSV, titels)
         
         # for i in main_data:
@@ -254,7 +274,7 @@ def editions_second(page):
         detail = items_query['detail']
         if 'Request was throttled.' in detail:
             t = int(detail[-10])
-            print(t)
+            print(f'Sleep on page {page} - {t} sec.')
             sleep(t)
             items_query= get_html(QUERY_REQ, params={'current':page})
             datas.extend(get_sec_edition(items_query, page))
@@ -300,16 +320,16 @@ def main():
     logging.info(f"Program started at {start}")
 
     # Парсим данные по каждому художнику
-    edition_first()
+    # edition_first()
 
-    # Парсим данные по каждому nifty
-    tp = get_total_pages()
-    total_pages = list(range(1, tp+1))
-    logging.info("Total pages {}".format(tp))
-    #total_pages = list(range(1,11))
-    # Создаём пулл задач для перехода по старницам в многопотоности
-    with Pool(cpu_count()) as p:
-        p.map(editions_second, total_pages)
+    # # Парсим данные по каждому nifty
+    # tp = get_total_pages()
+    # total_pages = list(range(1, tp+1))
+    # #total_pages = list(range(1,11))
+    # logging.info("Total pages {}".format(tp))
+    # # Создаём пулл задач для перехода по старницам в многопотоности
+    # with Pool(cpu_count()) as p:
+    #     p.map(editions_second, total_pages)
 
     # Парсим информацию по историям покупок - продаж
     items = get_html(OPEN_REQ)
@@ -317,12 +337,9 @@ def main():
     adress_and_type_to_parsing = []
     for item in adress_and_type:
         adress_and_type_to_parsing.append([item['Contract Address'], item['Nifty Type']])
-    print(adress_and_type_to_parsing)
-    print(len(adress_and_type_to_parsing))
-    sys.exit()
     
-    # with Pool(cpu_count()) as p:
-    #     p.map(get_events, adress_and_type_to_parsing)
+    with Pool(cpu_count()) as p:
+        p.map(get_events, adress_and_type_to_parsing)
 
     end = datetime.now()
     total = end - start
