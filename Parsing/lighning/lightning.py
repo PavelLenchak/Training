@@ -20,8 +20,6 @@ MAIN_DIR = pathlib.Path(__file__).parent
 CSV = 'basic info.csv'
 DIR_TO_SAVE_DOCS = 'D:\Python\__lighning docs'
 
-print(f'{MAIN_DIR}\{CSV}')
-
 URL_TO_PARSE = 'https://www.linealight.com/en-gb/products'
 HOST = 'https://www.linealight.com'
 
@@ -44,26 +42,6 @@ PROXIES = [
 ]
 
 logging.basicConfig(filename=f'{MAIN_DIR}\logs.csv', level=logging.INFO)
-lol = lambda lst, sz: [lst[i:i+sz] for i in range(0, len(lst), sz)]
-
-def save_docs(url, file_name, file_type):
-    # path = f'{DOCS_PATH}\{sap_code}'
-    # if not os.path.exists(path):
-    #     os.mkdir(path)
-
-    #print(path)
-    ufr = requests.get(url)
-    with open(f'{DIR_TO_SAVE_DOCS}\{file_name}{file_type}',"wb") as file: #открываем файл для записи, в режиме wb
-        file.write(ufr.content) #записываем содержимое в файл; как видите - content запроса
-    
-    with open(DOCS_FILE, 'a', newline='') as doc_file:
-        writer = csv.writer(doc_file, delimiter=';')
-        items = [f'{file_name}{file_type}', url]
-        writer.writerow(items)
-    
-    print('Записан файл {}'.format(file_name))
-    logging.info('Записан файл {} {}'.format(file_name, url))
-
 
 def save_csv(items, file_name):
     print(items)
@@ -79,10 +57,13 @@ def save_csv(items, file_name):
 
 
 if __name__ == '__main__':
-    driver = webdriver.Chrome()
+    chromeOptions = webdriver.ChromeOptions()
+    prefs = {"download.default_directory" : "D:\Python\__lighning docs"}
+    chromeOptions.add_experimental_option("prefs",prefs)
+
+    driver = webdriver.Chrome(chrome_options=chromeOptions)
     driver.get(URL_TO_PARSE)
-    driver.fullscreen_window()
-    elems = driver.find_elements_by_class_name('c-macro-category-box__link') # tag a
+    elems = driver.find_elements_by_class_name('c-macro-category-box__link')
     links = [elem.get_attribute('href') for elem in elems]
 
     # перехдим по главным категориям
@@ -116,18 +97,18 @@ if __name__ == '__main__':
                     t_body = driver.find_element_by_class_name('o-table__body').text.split('\n')
                     pr_name = driver.find_element_by_class_name('c-family-description__main').text
 
-                    # for i in range(len(t_body)):
                     data_to_save = {
                         'Main category name': main_category_name,
                         'Sub category name': sub_category_name,
                         'Family name': family_name,
                         'Product name': pr_name,
                         }
-                    #     save_csv(data_to_save, 'basic info')
                     
                     docs_elems = driver.find_elements_by_class_name('o-table__link')
                     docs_urls = [elem.get_attribute('href') for elem in docs_elems]
-                    for d_link in docs_urls:
+                    docs_code = [elem.text for elem in docs_elems]
+                    for index, d_link in enumerate(docs_urls):
+                        code = docs_code[index]
                         driver.get(d_link)
                         time.sleep(2)
 
@@ -135,18 +116,19 @@ if __name__ == '__main__':
                         pr_abstract = driver.find_element_by_class_name('c-product-abstract').text
                         for i in range(len(pr_specs)):
                             data_to_save[f'{i}'] = pr_specs[i]
+                        data_to_save['Code'] = code
                         data_to_save['Info'] = pr_abstract
 
                         select_all_button = driver.find_element_by_id('select-all-attachments')
-                        select_all_button.click
+                        select_all_button.send_keys(selenium.webdriver.common.keys.Keys.SPACE)
+                        #select_all_button.click()
 
                         download_docs_button = driver.find_element_by_id('download-attachments')
-                        download_docs_button.click
+                        download_docs_button.click()
                         
                         # Сохраняем общую информацию
                         save_csv([data_to_save], 'basic info')
                         sys.exit()
-
 
                         driver.back()
                         time.sleep(2)
@@ -154,18 +136,14 @@ if __name__ == '__main__':
                     driver.back()
                     time.sleep(2)
 
-
                 driver.back()
                 time.sleep(2)
             
-
             driver.back()
             time.sleep(2)
-
 
         driver.back()
         time.sleep(2)
 
-    
     driver.close()
     driver.quit()
