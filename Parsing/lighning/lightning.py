@@ -14,6 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 import selenium
 from selenium import webdriver
+from multiprocessing import Pool, cpu_count
 
 
 MAIN_DIR = pathlib.Path(__file__).parent
@@ -44,9 +45,7 @@ PROXIES = [
 logging.basicConfig(filename=f'{MAIN_DIR}\logs.csv', level=logging.INFO)
 
 def save_csv(items, file_name):
-    print(items)
     titels = list(items[0].keys())
-    print(titels)
     with open(f'{MAIN_DIR}\{file_name}.csv', 'a', newline='', encoding='utf-8') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         #print(titels)
@@ -55,19 +54,13 @@ def save_csv(items, file_name):
             writer.writerow(task)
 
 
+def parse_info(urls):
+    pass
 
-if __name__ == '__main__':
-    chromeOptions = webdriver.ChromeOptions()
-    prefs = {"download.default_directory" : "D:\Python\__lighning docs"}
-    chromeOptions.add_experimental_option("prefs",prefs)
 
-    driver = webdriver.Chrome(chrome_options=chromeOptions)
-    driver.get(URL_TO_PARSE)
-    elems = driver.find_elements_by_class_name('c-macro-category-box__link')
-    links = [elem.get_attribute('href') for elem in elems]
-
+def main(urls):
     # перехдим по главным категориям
-    for link in links[:-1]:
+    for link in urls[:-1]:
         driver.get(link)
         time.sleep(2)
 
@@ -119,16 +112,22 @@ if __name__ == '__main__':
                         data_to_save['Code'] = code
                         data_to_save['Info'] = pr_abstract
 
-                        select_all_button = driver.find_element_by_id('select-all-attachments')
-                        select_all_button.send_keys(selenium.webdriver.common.keys.Keys.SPACE)
-                        #select_all_button.click()
+                        print(f'Saving {code}')
+                        try:
+                            select_all_button = driver.find_element_by_id('select-all-attachments')
+                            select_all_button.send_keys(selenium.webdriver.common.keys.Keys.SPACE)
+                            #select_all_button.click()
 
-                        download_docs_button = driver.find_element_by_id('download-attachments')
-                        download_docs_button.click()
-                        
-                        # Сохраняем общую информацию
-                        save_csv([data_to_save], 'basic info')
-                        sys.exit()
+                            download_docs_button = driver.find_element_by_id('download-attachments')
+                            download_docs_button.click()
+                            time.sleep(10)
+                        except Exception as ex:
+                            print(f'Не могу скачать файлы {pr_name} {code}')
+                            logging.info(f'Файлы не загружены {pr_name} {code}')
+                        finally:
+                            logging.info(f'Save the element {sub_category_name} {code}')
+                            # Сохраняем общую информацию
+                            save_csv([data_to_save], 'basic info')
 
                         driver.back()
                         time.sleep(2)
@@ -145,5 +144,23 @@ if __name__ == '__main__':
         driver.back()
         time.sleep(2)
 
-    driver.close()
-    driver.quit()
+
+if __name__ == '__main__':
+    chromeOptions = webdriver.ChromeOptions()
+    prefs = {"download.default_directory" : "D:\Python\__lighning docs"}
+    chromeOptions.add_experimental_option("prefs",prefs)
+
+    driver = webdriver.Chrome(chrome_options=chromeOptions)
+    driver.get(URL_TO_PARSE)
+    elems = driver.find_elements_by_class_name('c-macro-category-box__link')
+    links = [elem.get_attribute('href') for elem in elems]
+
+    # with Pool(cpu_count()) as p:
+    #     p.map(main, links)
+    try:
+        main(links)
+    except Exception as ex:
+        print(ex)
+    finally:
+        driver.close()
+        driver.quit()
