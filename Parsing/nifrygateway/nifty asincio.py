@@ -1,4 +1,5 @@
 import pathlib, sys
+import random
 import asyncio
 import logging
 import csv
@@ -8,8 +9,7 @@ from fake_useragent import UserAgent
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
-import urllib.error
-import urllib.parse
+from aiohttp_proxy import ProxyConnector, ProxyType
 
 HEADERS = {
     'user-agent': UserAgent().chrome
@@ -24,7 +24,7 @@ logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.IN
 
 
 async def fetch_html(url, session: ClientSession, **kwargs):
-    resp = await session.request(method='GET', url=url, **kwargs)
+    resp = await session.request(method='GET', url=url, headers=HEADERS, **kwargs)
     
     resp.raise_for_status()
     logging.info(f'Get response {resp.status} for URL: {url}')
@@ -35,6 +35,7 @@ async def fetch_html(url, session: ClientSession, **kwargs):
 async def parse(url, session: ClientSession, **kwargs):
     items = []
     try:
+        await asyncio.sleep(2)
         html = await fetch_html(url=url, session=session, **kwargs)
     except (
         aiohttp.ClientError,
@@ -63,12 +64,11 @@ async def parse(url, session: ClientSession, **kwargs):
 
 async def write_one(url, file, **kwargs):
     datas = await parse(url=url, **kwargs)
-    print(datas)
     logging.info(datas)
     if not datas:
         return None
     titels = list(datas[0].keys())
-    async with aiofiles.open(file, 'a', newline='') as csv_file:
+    async with aiofiles.open(file, 'a', newline='', encoding='utf-16') as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         for item in datas:
             task = [item[titels[i]] for i in range(len(titels))]
@@ -77,7 +77,8 @@ async def write_one(url, file, **kwargs):
 
 
 async def parse_and_write(urls, **kwargs):
-    async with ClientSession() as session:
+    connector = ProxyConnector.from_url(random.choice(proxies))
+    async with ClientSession(connector=connector) as session:
         tasks = []
         for url in urls:
             tasks.append(
@@ -94,6 +95,7 @@ def _get_html(url, params=''):
     except:
         print('Loadnig ERROR: {}'.format(response))
 
+
 def _get_total_pages():
     iquery= _get_html(QUERY_REQ, params={'current':1})
     total_pages = iquery['data']['meta']['total_pages']
@@ -101,6 +103,14 @@ def _get_total_pages():
 
 
 if __name__ == '__main__':
+    global proxies
+    proxies = []
+    with open(f'{MAIN_PATH}\proxy.csv', 'r') as file:
+        csv_reader = csv.reader(file, delimiter=',')
+        for row in csv_reader:
+            proxy = row[0]
+            proxies.append(f'http://{proxy}')
+
     urls = []
     tp = _get_total_pages()
     logging.info("Total pages {}".format(tp))
