@@ -69,8 +69,8 @@ def get_html(url, params=''):
         print('Loadnig ERROR: {}'.format(response))
 
 
-def save_csv(items, path, titels):
-    with open(path, 'a', newline='', encoding='utf-8') as csv_file:
+def save_csv(items, path, titels, encoding='utf-8'):
+    with open(path, 'a', newline='', encoding=encoding) as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
         #writer.writerow(titels)
         #print(titels)
@@ -120,9 +120,10 @@ def get_events(adress_and_type):
             for d in data_results:
                 #print(d, sep='\n')
                 action = d['Type']
+                id = d['id']
                 time = ''
-                user1 = ''
-                user2 = ''
+                # user1 = ''
+                # user2 = ''
                 user1_id = ''
                 user2_id = ''
                 price = ''
@@ -142,12 +143,9 @@ def get_events(adress_and_type):
                 time = datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S.%f')
                 
                 if action == 'offer':
-                    id = d['id'] #d['UnmintedNiftyObj']['niftyTitle'] #'None'
-                    token_id = 'None'
                     #user1 = d['ListingUserProfile']['name']
                     #user2 = 'None'
                     user1_id = d['ListingUserProfile']['id']
-                    user2_id = 'None'
                     price = d['OfferAmountInCents'] * 0.01
                 elif action == 'listing':
                     id = d['NiftyObject']['id']
@@ -155,7 +153,6 @@ def get_events(adress_and_type):
                     #user1 = d['ListingUserProfile']['name']
                     #user2 = 'None'
                     user1_id = d['ListingUserProfile']['id']
-                    user2_id = 'None'
                     price = d['ListingAmountInCents'] * 0.01
                 elif action == 'birth':
                     id = d['NiftyObject']['id']
@@ -163,16 +160,12 @@ def get_events(adress_and_type):
                     #user1 = d['BirthingUserProfile']['name']
                     #user2 = 'None'
                     user1_id = d['BirthingUserProfile']['id']
-                    user2_id = 'None'
-                    price = 'None'
                 elif action == 'withdrawal':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
                     #user1 = d['WithdrawingUserProfile']['name']
                     #user2 = 'None'
                     user1_id = d['WithdrawingUserProfile']['id']
-                    user2_id = 'None'
-                    price = 'None'
                 elif action == 'nifty_transfer':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
@@ -180,7 +173,6 @@ def get_events(adress_and_type):
                     #user2 = d['ReceivingUserProfile']['name']
                     user1_id = d['SendingUserProfile']['id']
                     user2_id = d['ReceivingUserProfile']['id']
-                    price = 'None'
                 elif action == 'sale':
                     id = d['NiftyObject']['id']
                     token_id = d['NiftyObject']['tokenId']
@@ -190,12 +182,9 @@ def get_events(adress_and_type):
                     user2_id = d['PurchasingUserProfile']['id']
                     price = d['SaleAmountInCents'] * 0.01
                 elif action == 'bid':
-                    id = d['id']
-                    token_id = 'None'
                     #user1 = d['BiddingUserProfile']['name']
                     #user2 = 'None'
                     user1_id = d['BiddingUserProfile']['id']
-                    user2_id = 'None'
                     price = d['BidAmountInCents'] * 0.01
                 else:
                     print(f'New action: {action}')
@@ -215,8 +204,8 @@ def get_events(adress_and_type):
                     'ID': id,
                     'Token ID': token_id,
                     'DateTime': time,
-                    'User 1': user1,
-                    'User 2': user2,
+                    # 'User 1': user1,
+                    # 'User 2': user2,
                     'User 1 ID': user1_id,
                     'User 2 ID': user2_id,
                     'Action': types[action],
@@ -312,7 +301,7 @@ def edition_first():
     items = get_html(OPEN_REQ)
     datas.extend(get_first_edition(items))
     titels = list(datas[0].keys())
-    save_csv(datas, EDITIONS_F_CSV, titels)
+    save_csv(datas, EDITIONS_F_CSV, titels, encoding='utf-16')
     
 
 def main():
@@ -320,7 +309,8 @@ def main():
     logging.info(f"Program started at {start}")
 
     # Парсим данные по каждому художнику
-    # edition_first()
+    edition_first()
+    sys.exit()
 
     # # Парсим данные по каждому nifty
     # tp = get_total_pages()

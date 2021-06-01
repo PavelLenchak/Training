@@ -14,6 +14,9 @@ import requests
 from bs4 import BeautifulSoup
 import selenium
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
 from multiprocessing import Pool, cpu_count
 
 
@@ -54,15 +57,12 @@ def save_csv(items, file_name):
             writer.writerow(task)
 
 
-def parse_info(urls):
-    pass
-
-
 def main(urls):
     # перехдим по главным категориям
-    for link in urls[:-1]:
+    for link in urls:
+        logging.info(f'Start parsing {link}')
         driver.get(link)
-        time.sleep(2)
+        driver.implicitly_wait(2)
 
         main_category_name = driver.find_element_by_class_name('c-common-cover__main').text
         a_elems = driver.find_elements_by_class_name('c-article-wrap')
@@ -70,7 +70,7 @@ def main(urls):
         # перехдим по подкатегории
         for sub_link in sub_urls:
             driver.get(sub_link)
-            time.sleep(2)
+            driver.implicitly_wait(2)
 
             sub_category_name = driver.find_element_by_class_name('c-common-cover__main').text
             fam_elems = driver.find_elements_by_class_name('c-article-wrap')
@@ -78,7 +78,7 @@ def main(urls):
             # переходим по продуктовым семьям
             for f_link in f_urls:
                 driver.get(f_link)
-                time.sleep(2)
+                driver.implicitly_wait(2)
 
                 family_name = driver.find_element_by_class_name('c-common-cover__main').text
                 product_elems = driver.find_elements_by_class_name('c-article-wrap')
@@ -109,17 +109,20 @@ def main(urls):
                         pr_abstract = driver.find_element_by_class_name('c-product-abstract').text
                         for i in range(len(pr_specs)):
                             data_to_save[f'{i}'] = pr_specs[i]
-                        data_to_save['Code'] = code
-                        data_to_save['Info'] = pr_abstract
+                        data_to_save['Code'] = f'Code {code}'
+                        data_to_save['Info'] = f'Abstract {pr_abstract}'
 
                         print(f'Saving {code}')
                         try:
+                            WAIT.until(EC.element_to_be_clickable((By.ID, "select-all-attachments")))
                             select_all_button = driver.find_element_by_id('select-all-attachments')
                             select_all_button.send_keys(selenium.webdriver.common.keys.Keys.SPACE)
                             #select_all_button.click()
-
+                            
+                            WAIT.until(EC.element_to_be_clickable((By.ID, "download-attachments")))
                             download_docs_button = driver.find_element_by_id('download-attachments')
-                            download_docs_button.click()
+                            download_docs_button.send_keys(selenium.webdriver.common.keys.Keys.SPACE)
+                            #download_docs_button.click()
                             time.sleep(10)
                         except Exception as ex:
                             print(f'Не могу скачать файлы {pr_name} {code}')
@@ -129,20 +132,20 @@ def main(urls):
                             # Сохраняем общую информацию
                             save_csv([data_to_save], 'basic info')
 
-                        driver.back()
-                        time.sleep(2)
+                            driver.back()
+                            driver.implicitly_wait(2)
 
                     driver.back()
-                    time.sleep(2)
+                    driver.implicitly_wait(2)
 
                 driver.back()
-                time.sleep(2)
+                driver.implicitly_wait(2)
             
             driver.back()
-            time.sleep(2)
+            driver.implicitly_wait(2)
 
         driver.back()
-        time.sleep(2)
+        driver.implicitly_wait(2)
 
 
 if __name__ == '__main__':
@@ -151,9 +154,17 @@ if __name__ == '__main__':
     chromeOptions.add_experimental_option("prefs",prefs)
 
     driver = webdriver.Chrome(chrome_options=chromeOptions)
+    WAIT = WebDriverWait(driver, 500)
     driver.get(URL_TO_PARSE)
     elems = driver.find_elements_by_class_name('c-macro-category-box__link')
     links = [elem.get_attribute('href') for elem in elems]
+
+    links = [
+        'https://www.linealight.com/en-gb/professional-indoor-lighting',
+        'https://www.linealight.com/en-gb/professional-outdoor-lighting',
+        'https://www.linealight.com/en-gb/industrial-lighting',
+        'https://www.linealight.com/en-gb/home-lighting',
+    ]
 
     # with Pool(cpu_count()) as p:
     #     p.map(main, links)

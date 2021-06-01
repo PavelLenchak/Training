@@ -10,7 +10,7 @@ def save_to_scv(item):
         writer = csv.writer(file, delimiter=';')
         writer.writerow(item)
 
-mypath = "D:\\Python\\lightstart docs"
+mypath = "D:\Python\__lighning docs"
 bar = IncrementalBar('Progress', max = len(listdir(mypath)))
 for i in listdir(mypath):
     if isfile(joinpath(mypath,i)):
