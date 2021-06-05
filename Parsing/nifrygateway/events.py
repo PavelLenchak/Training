@@ -1,101 +1,210 @@
-import pathlib, sys
-import random
-import asyncio
-import logging
-import csv
+import sys
 import requests
+import random
+from time import sleep
+from datetime import datetime
+import csv
+import logging
 from fake_useragent import UserAgent
+from multiprocessing import Pool, cpu_count
 
-import aiofiles
-import aiohttp
-from aiohttp import ClientSession
-from aiohttp_proxy import ProxyConnector, ProxyType
-from .nifty_first_editions import get_html, get_first_edition
+logging.basicConfig(filename='Parsing\\nifrygateway\\logs_events.csv', level=logging.INFO)
+
+OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
+EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
+
+EVENTS_CSV = 'Parsing\\nifrygateway\\events.csv'
 
 HEADERS = {
     'user-agent': UserAgent().chrome
 }
 
-MAIN_PATH = pathlib.Path(__file__).parent
-
-OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
-EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
-CSV_FILE = f'{MAIN_PATH}\events.csv'
-
-logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
-
-
-async def fetch_html(url, session: ClientSession, **kwargs):
-    resp = await session.request(method='GET', url=url, headers=HEADERS, **kwargs)
-    
-    resp.raise_for_status()
-    logging.info(f'Get response {resp.status} for URL: {url}')
-    html = await resp.json()
-    return html
+PROXIES = [
+    '91.193.253.188:23500',
+    '176.9.119.170:3128',
+    '176.9.75.42:3128',
+    '88.198.24.108:8080',
+    '95.141.193.35:80',
+    '176.9.75.42:8080',
+    '95.141.193.14:80',
+    '5.252.161.48:8080',
+    '176.9.119.170:3128',
+]
 
 
-async def parse(url, session: ClientSession, **kwargs):
-    items = []
-    try:
-        # await asyncio.sleep(random.randint(0, 10))
-        html = await fetch_html(url=url, session=session, **kwargs)
-    except (
-        aiohttp.ClientError,
-    ) as e:
-        print('{} {}'.format(e, url[url.find(':',url.find('current')):url.find(',%22size')]))
-        logging.error(f'aiohttp exeption for {url} {e}')
-    except Exception as ex:
-        logging.exception(
-            f'Неизвестная ошибка парсинга {ex}'
-        )
-        return items
+def save_csv(items, path, titels, encoding='utf-8'):
+    with open(path, 'a', newline='', encoding=encoding) as csv_file:
+        writer = csv.writer(csv_file, delimiter=';')
+        #writer.writerow(titels)
+        #print(titels)
+        for item in items:
+            task = [item[titels[i]] for i in range(len(titels))]
+            writer.writerow(task)
+
+
+def get_events(adress_and_type, start_page=1):
+    proxy = random.choice(PROXIES)
+    main_data = []
+    adress = adress_and_type[0]
+    nifty_type = adress_and_type[1]
+
+    response = requests.post(EVENTS_REQ, proxies={'http': 'http://' + proxy}, data={
+        "contractAddress": adress,
+        "niftyType": nifty_type,
+        "current":1,
+        "size":10,
+        "onlySales":"false",
+    })
+    if response.status_code != 200:
+        data = response.json()
+        t = int(data['detail'][-10]) + 1
+        print(f'Засыпаем на {t} секунд')
+        sleep(t)
+        get_events([adress, nifty_type])
     else:
-        for item in html['data']['results']:
-            # Если нужно получить число между # и / в item['name'] - есть не во всех названиях
-            ed_number = item['name'][item['name'].find('#'):item['name'].find('/')]
-            items.append(
+        data = response.json()
+
+        total_pages = int(data['data']['meta']['page']['total_pages']) + 1
+        print('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
+        logging.info('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
+        
+        for page in range(start_page, total_pages):
+            response = requests.post(EVENTS_REQ, data={
+                "contractAddress":adress,
+                "niftyType":nifty_type,
+                "current":page,
+                "size":10,
+                "onlySales":"false"})
+            logging.info(f'Response status: {response.status_code} for contractAddress: {adress} niftyType: {nifty_type} page: {page}')
+            data = response.json()
+
+            try:
+                data_results = data['data']['results']
+            except Exception as ex:
+                t = int(data['detail'][-10]) + 1
+                print(f'Засыпаем на {t} секунд')
+                sleep(t)
+                get_events([adress, nifty_type], start_page=page)
+            else:
+                for d in data_results:
+                    #print(d, sep='\n')
+                    action = d['Type']
+                    id = d['id']
+                    token_id = 'None'
+                    time = 'None'
+                    # user1 = 'None'
+                    # user2 = 'None'
+                    user1_id = 'None'
+                    user2_id = 'None'
+                    price = 'None'
+
+                    types = {
+                        'listing': 'put',
+                        'birth': 'has been deposited into Nifty Gateway by',
+                        'offer': 'made a global offer for',
+                        'withdrawal': 'withdrew',
+                        'nifty_transfer': 'sent',
+                        'sale': 'bought',
+                        'bid': 'put on sale',
+                    }
+
+                    #2013-07-12T07:00:00Z datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S.%f')
+                    r_time = d['Timestamp'].replace('T', ' ').replace('Z', '')
+                    time = datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S.%f')
+                    
+                    if action == 'offer':
+                        #user1 = d['ListingUserProfile']['name']
+                        #user2 = 'None'
+                        user1_id = d['ListingUserProfile']['id']
+                        price = d['OfferAmountInCents'] * 0.01
+                    elif action == 'listing':
+                        id = d['NiftyObject']['id']
+                        token_id = d['NiftyObject']['tokenId']
+                        #user1 = d['ListingUserProfile']['name']
+                        #user2 = 'None'
+                        user1_id = d['ListingUserProfile']['id']
+                        price = d['ListingAmountInCents'] * 0.01
+                    elif action == 'birth':
+                        id = d['NiftyObject']['id']
+                        token_id = d['NiftyObject']['tokenId']
+                        #user1 = d['BirthingUserProfile']['name']
+                        #user2 = 'None'
+                        user1_id = d['BirthingUserProfile']['id']
+                    elif action == 'withdrawal':
+                        id = d['NiftyObject']['id']
+                        token_id = d['NiftyObject']['tokenId']
+                        #user1 = d['WithdrawingUserProfile']['name']
+                        #user2 = 'None'
+                        user1_id = d['WithdrawingUserProfile']['id']
+                    elif action == 'nifty_transfer':
+                        id = d['NiftyObject']['id']
+                        token_id = d['NiftyObject']['tokenId']
+                        #user1 = d['SendingUserProfile']['name']
+                        #user2 = d['ReceivingUserProfile']['name']
+                        user1_id = d['SendingUserProfile']['id']
+                        user2_id = d['ReceivingUserProfile']['id']
+                    elif action == 'sale':
+                        id = d['NiftyObject']['id']
+                        token_id = d['NiftyObject']['tokenId']
+                        #user1 = d['SellingUserProfile']['name']
+                        #user2 = d['PurchasingUserProfile']['name']
+                        user1_id = d['SellingUserProfile']['id']
+                        user2_id = d['PurchasingUserProfile']['id']
+                        price = d['SaleAmountInCents'] * 0.01
+                    elif action == 'bid':
+                        #user1 = d['BiddingUserProfile']['name']
+                        #user2 = 'None'
+                        user1_id = d['BiddingUserProfile']['id']
+                        price = d['BidAmountInCents'] * 0.01
+                    else:
+                        print(f'New action: {action}')
+                        #print(d['BiddingUserProfile'])
+                        #print(d['NiftyObject'])
+                        id = 'None'
+                        token_id = 'NEW ACTION' + action + adress + nifty_type
+                        #user1 = 'None'
+                        #user2 = 'None'
+                        user1_id = 'None'
+                        user2_id = 'None'
+                        price = 'None'
+                        logging.info('NEW ACTION {} - {} {}'.format(action, adress, nifty_type))
+
+
+                    main_data.append({
+                        'ID': id,
+                        'Token ID': token_id,
+                        'DateTime': time,
+                        # 'User 1': user1,
+                        # 'User 2': user2,
+                        'User 1 ID': user1_id,
+                        'User 2 ID': user2_id,
+                        'Action': types[action],
+                        'Price': str(price)
+                    })
+                    titels = list(main_data[0].keys())
+
+        save_csv(main_data, EVENTS_CSV, titels)
+
+
+def get_first_edition(items):
+    niftys = []
+    for item in items:
+        for nifty in item['nifties']:
+            niftys.append(
                 {
-                    'Collection name': item['project_name'],
-                    'Contract Address': item['contract_address'],
-                    'Edition number': item['name'],
-                    'Token id': item['token_id_or_nifty_type'],
-                    'Owner_id': item['owner_profile_id'],
+                    'Artist': item['userProfile']['name'],
+                    'Collection Name': item['storeName'],
+                    'Collection Type': item['template'],
+                    'Edition Name': nifty['niftyTitle'],
+                    'Edition Type': nifty['niftyDisplayImage'].split('.')[-1],
+                    'Nifty Type': nifty['niftyType'],
+                    'Edition Total Size': nifty['niftyTotalNumOfEditions'],
+                    'Contract Address': nifty['niftyContractAddress'],
                 }
             )
-        return items
+    return niftys
 
-
-async def write_one(url, file, sem, **kwargs):
-    # print(f'Parse {url}')
-    async with sem:
-        datas = await parse(url=url, **kwargs)
-    # logging.info(datas)
-    if not datas:
-        return None
-    titels = list(datas[0].keys())
-    async with aiofiles.open(file, 'a', newline='', encoding='utf-16') as csv_file:
-        writer = csv.writer(csv_file, delimiter=';')
-        for item in datas:
-            task = [item[titels[i]] for i in range(len(titels))]
-            await writer.writerow(task)
-        print('Записан результат для {}'.format(url[url.find(':',url.find('current')):url.find(',%22size')]))
-        # logging.info(f'Записан результат для {url}')
-
-
-async def parse_and_write(urls, **kwargs):
-    # Количество одновременных запросов
-    sem = asyncio.Semaphore(5)
-    async with ClientSession() as session:
-        tasks = []
-        # Формируем задания для 
-        for url in urls:
-            tasks.append(
-                write_one(url=url, file= CSV_FILE, session=session, sem=sem, **kwargs)
-            )
-        await asyncio.gather(*tasks)
-
-
-def _get_html(url, params=''):
+def get_html(url, params=''):
     try:
         response = requests.get(url, headers=HEADERS, params=params)
         data=response.json()
@@ -103,30 +212,24 @@ def _get_html(url, params=''):
     except:
         print('Loadnig ERROR: {}'.format(response))
 
+def main():
+    start = datetime.now()
+    logging.info(f'Start parsing events: {start}')
 
-
-def parse_events():
+    # Парсим информацию по историям покупок - продаж
     items = get_html(OPEN_REQ)
     adress_and_type = get_first_edition(items)
     adress_and_type_to_parsing = []
     for item in adress_and_type:
         adress_and_type_to_parsing.append([item['Contract Address'], item['Nifty Type']])
     
-    print(adress_and_type_to_parsing)
-    sys.exit()
+    with Pool(cpu_count()) as p:
+        p.map(get_events, adress_and_type_to_parsing)
 
-    urls = []
-    tp = _get_total_pages()
-    print("Total pages {}".format(tp))
-    logging.info("Total pages {}".format(tp))
-
-    for i in range(1, tp+1):
-        urls.append(
-            f'https://api.niftygateway.com//already_minted_nifties/?searchQuery=%3Fpage%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:{i},%22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D'
-        )
-    asyncio.run(parse_and_write(urls=urls))
+    end = datetime.now()
+    logging.info(f'Start parsing events: {end}')
+    logging.info(f'Total execute time: {end - start}')
 
 
 if __name__ == '__main__':
-    parse_events()
-
+    main()
