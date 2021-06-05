@@ -10,6 +10,7 @@ import aiofiles
 import aiohttp
 from aiohttp import ClientSession
 from aiohttp_proxy import ProxyConnector, ProxyType
+from .nifty_first_editions import get_html, get_first_edition
 
 HEADERS = {
     'user-agent': UserAgent().chrome
@@ -17,8 +18,9 @@ HEADERS = {
 
 MAIN_PATH = pathlib.Path(__file__).parent
 
-QUERY_REQ= 'https://api.niftygateway.com//already_minted_nifties/?searchQuery=%3Fpage%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:1,%22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D'
-CSV_FILE = f'{MAIN_PATH}\SECOND.csv'
+OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
+EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
+CSV_FILE = f'{MAIN_PATH}\events.csv'
 
 logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
 
@@ -35,11 +37,12 @@ async def fetch_html(url, session: ClientSession, **kwargs):
 async def parse(url, session: ClientSession, **kwargs):
     items = []
     try:
-        await asyncio.sleep(2)
+        # await asyncio.sleep(random.randint(0, 10))
         html = await fetch_html(url=url, session=session, **kwargs)
     except (
         aiohttp.ClientError,
     ) as e:
+        print('{} {}'.format(e, url[url.find(':',url.find('current')):url.find(',%22size')]))
         logging.error(f'aiohttp exeption for {url} {e}')
     except Exception as ex:
         logging.exception(
@@ -62,10 +65,11 @@ async def parse(url, session: ClientSession, **kwargs):
         return items
 
 
-async def write_one(url, file, **kwargs):
-    print(f'Parse {url}')
-    datas = await parse(url=url, **kwargs)
-    logging.info(datas)
+async def write_one(url, file, sem, **kwargs):
+    # print(f'Parse {url}')
+    async with sem:
+        datas = await parse(url=url, **kwargs)
+    # logging.info(datas)
     if not datas:
         return None
     titels = list(datas[0].keys())
@@ -74,17 +78,19 @@ async def write_one(url, file, **kwargs):
         for item in datas:
             task = [item[titels[i]] for i in range(len(titels))]
             await writer.writerow(task)
-        print(f'Записан результат для {url}')
-        logging.info(f'Записан результат для {url}')
+        print('Записан результат для {}'.format(url[url.find(':',url.find('current')):url.find(',%22size')]))
+        # logging.info(f'Записан результат для {url}')
 
 
 async def parse_and_write(urls, **kwargs):
-    connector = ProxyConnector.from_url(random.choice(proxies))
+    # Количество одновременных запросов
+    sem = asyncio.Semaphore(5)
     async with ClientSession() as session:
         tasks = []
+        # Формируем задания для 
         for url in urls:
             tasks.append(
-                write_one(url=url, file= CSV_FILE, session=session, **kwargs)
+                write_one(url=url, file= CSV_FILE, session=session, sem=sem, **kwargs)
             )
         await asyncio.gather(*tasks)
 
@@ -98,23 +104,20 @@ def _get_html(url, params=''):
         print('Loadnig ERROR: {}'.format(response))
 
 
-def _get_total_pages():
-    iquery= _get_html(QUERY_REQ, params={'current':1})
-    total_pages = iquery['data']['meta']['total_pages']
-    return total_pages
 
-
-if __name__ == '__main__':
-    global proxies
-    proxies = []
-    with open(f'{MAIN_PATH}\proxy.csv', 'r') as file:
-        csv_reader = csv.reader(file, delimiter=',')
-        for row in csv_reader:
-            proxy = row[0]
-            proxies.append(f'http://{proxy}')
+def parse_events():
+    items = get_html(OPEN_REQ)
+    adress_and_type = get_first_edition(items)
+    adress_and_type_to_parsing = []
+    for item in adress_and_type:
+        adress_and_type_to_parsing.append([item['Contract Address'], item['Nifty Type']])
+    
+    print(adress_and_type_to_parsing)
+    sys.exit()
 
     urls = []
     tp = _get_total_pages()
+    print("Total pages {}".format(tp))
     logging.info("Total pages {}".format(tp))
 
     for i in range(1, tp+1):
@@ -122,4 +125,8 @@ if __name__ == '__main__':
             f'https://api.niftygateway.com//already_minted_nifties/?searchQuery=%3Fpage%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:{i},%22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D'
         )
     asyncio.run(parse_and_write(urls=urls))
+
+
+if __name__ == '__main__':
+    parse_events()
 
