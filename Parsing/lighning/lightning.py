@@ -62,7 +62,7 @@ def main(urls):
     for link in urls:
         logging.info(f'Start parsing {link}')
         driver.get(link)
-        driver.implicitly_wait(2)
+        time.sleep(2)
 
         main_category_name = driver.find_element_by_class_name('c-common-cover__main').text
         a_elems = driver.find_elements_by_class_name('c-article-wrap')
@@ -70,7 +70,7 @@ def main(urls):
         # перехдим по подкатегории
         for sub_link in sub_urls:
             driver.get(sub_link)
-            driver.implicitly_wait(2)
+            time.sleep(2)
 
             sub_category_name = driver.find_element_by_class_name('c-common-cover__main').text
             fam_elems = driver.find_elements_by_class_name('c-article-wrap')
@@ -78,7 +78,7 @@ def main(urls):
             # переходим по продуктовым семьям
             for f_link in f_urls:
                 driver.get(f_link)
-                driver.implicitly_wait(2)
+                time.sleep(2)
 
                 family_name = driver.find_element_by_class_name('c-common-cover__main').text
                 product_elems = driver.find_elements_by_class_name('c-article-wrap')
@@ -160,10 +160,10 @@ if __name__ == '__main__':
     links = [elem.get_attribute('href') for elem in elems]
 
     links = [
-        'https://www.linealight.com/en-gb/professional-indoor-lighting',
+        # 'https://www.linealight.com/en-gb/professional-indoor-lighting',
         'https://www.linealight.com/en-gb/professional-outdoor-lighting',
-        'https://www.linealight.com/en-gb/industrial-lighting',
-        'https://www.linealight.com/en-gb/home-lighting',
+        # 'https://www.linealight.com/en-gb/industrial-lighting',
+        # 'https://www.linealight.com/en-gb/home-lighting',
     ]
 
     # with Pool(cpu_count()) as p:

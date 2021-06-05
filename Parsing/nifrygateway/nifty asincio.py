@@ -63,6 +63,7 @@ async def parse(url, session: ClientSession, **kwargs):
 
 
 async def write_one(url, file, **kwargs):
+    print(f'Parse {url}')
     datas = await parse(url=url, **kwargs)
     logging.info(datas)
     if not datas:
@@ -73,12 +74,13 @@ async def write_one(url, file, **kwargs):
         for item in datas:
             task = [item[titels[i]] for i in range(len(titels))]
             await writer.writerow(task)
+        print(f'Записан результат для {url}')
         logging.info(f'Записан результат для {url}')
 
 
 async def parse_and_write(urls, **kwargs):
     connector = ProxyConnector.from_url(random.choice(proxies))
-    async with ClientSession(connector=connector) as session:
+    async with ClientSession() as session:
         tasks = []
         for url in urls:
             tasks.append(
