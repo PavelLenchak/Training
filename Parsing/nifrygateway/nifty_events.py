@@ -1,3 +1,11 @@
+# -*- mode: python ; file: nifty_events.py ; encoding: utf-8 -*-
+
+'''
+    Парсинг сайта niftygateway.com
+    Данные выгружаются по запросу EVENTS_REQ (request.post)
+    Используется метод multiprocessing
+'''
+
 import sys
 import requests
 import random
@@ -7,13 +15,16 @@ import csv
 import logging
 from fake_useragent import UserAgent
 from multiprocessing import Pool, cpu_count
+import pathlib
 
-logging.basicConfig(filename='Parsing\\nifrygateway\\logs_events.csv', level=logging.INFO)
+MAIN_PATH = pathlib.Path(__file__).parent
+
+logging.basicConfig(filename=f'{MAIN_PATH}\logs_events.csv', level=logging.INFO)
 
 OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
 EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
 
-EVENTS_CSV = 'Parsing\\nifrygateway\\events.csv'
+EVENTS_CSV = f'{MAIN_PATH}\\events.csv'
 
 HEADERS = {
     'user-agent': UserAgent().chrome
@@ -57,7 +68,7 @@ def get_events(adress_and_type, start_page=1):
     })
     if response.status_code != 200:
         data = response.json()
-        t = int(data['detail'][-10]) + 1
+        t = random.randint(1,10) #int(data['detail'][-10]) + 1
         print(f'Засыпаем на {t} секунд')
         sleep(t)
         get_events([adress, nifty_type])
@@ -82,7 +93,7 @@ def get_events(adress_and_type, start_page=1):
             try:
                 data_results = data['data']['results']
             except Exception as ex:
-                t = int(data['detail'][-10]) + 1
+                t = random.randint(1,10)#int(data['detail'][-10]) + 1
                 print(f'Засыпаем на {t} секунд')
                 sleep(t)
                 get_events([adress, nifty_type], start_page=page)
@@ -213,7 +224,8 @@ def get_html(url, params=''):
     except:
         print('Loadnig ERROR: {}'.format(response))
 
-def main():
+def parse_events():
+    print('Start EVENTS part')
     start = datetime.now()
     logging.info(f'Start parsing events: {start}')
 
@@ -228,9 +240,9 @@ def main():
         p.map(get_events, adress_and_type_to_parsing)
 
     end = datetime.now()
-    logging.info(f'Start parsing events: {end}')
-    logging.info(f'Total execute time: {end - start}')
+    logging.info(f'End parsing events: {end}')
+    logging.info(f'Total execute EVENTS time: {end - start}')
 
 
 if __name__ == '__main__':
-    main()
+    parse_events()

@@ -1,10 +1,11 @@
-# -*- coding: utf-8 -*-
-# niftygateway.py
+# -*- mode: python ; file: main.py ; encoding: utf-8 -*-
 
 """
     Парсинг сайта https://niftygateway.com/marketplace
-    Используются библиотеки requests, bs4, csv
-    Собираем информацию через запросы requests.get ... requests.post
+
+    1. edition first - данные по каждому nifty (его принадлежность к художнику (коллекции), niftytype и т.д.)
+    2. edition second - данные по каждому nifty (token id, owner id и т.д.)
+    3. events - все транзакции по каждому токену
 """
 
 import os, sys
@@ -19,15 +20,17 @@ from multiprocessing import Pool
 from multiprocessing import cpu_count
 import logging
 import random
-from . import nifty_second_editions
-from . import nifty_events
+import nifty_events
+import nifty_second_editions
 
-logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
+# Директория файла
+MAIN_PATH = pathlib.Path(__file__).parent
+
+# Идентифицирем дебаггер
+logging.basicConfig(filename=f'{MAIN_PATH}\logs.csv', level=logging.INFO)
 
 # Файлы для сохранения данных
-EDITIONS_F_CSV = 'Parsing\\nifrygateway\\editions_first.csv'
-EDITIONS_S_CSV = 'Parsing\\nifrygateway\\editions_second.csv'
-EVENTS_CSV = 'Parsing\\nifrygateway\\events.csv'
+EDITIONS_F_CSV = f'{MAIN_PATH}\editions_first.csv'
 
 # OPEN_REQ - запрос на сервер для получения информации о художниках и их коллекций (GET запрос)
 # QUERY_REQ - запрос для получения информации по каждому nifty (GET запрос)
@@ -36,24 +39,11 @@ OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
 QUERY_REQ= 'https://api.niftygateway.com//already_minted_nifties/?searchQuery=%3Fpage%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:1,%22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D'
 EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
 
-test = 'https://niftygateway.com/itemdetail/secondary/0x68c4dd3f302c449be39af528d56c6bd242b8cedb/23600030038'
-
 # Заголовки - для идентификации как живой человек
 HEADERS = {
     'user-agent': UserAgent().chrome
 }
 
-PROXIES = [
-    '91.193.253.188:23500',
-    '176.9.119.170:3128',
-    '176.9.75.42:3128',
-    '88.198.24.108:8080',
-    '95.141.193.35:80',
-    '176.9.75.42:8080',
-    '95.141.193.14:80',
-    '5.252.161.48:8080',
-    '176.9.119.170:3128',
-]
 
 # Получем данные по запросу 
 def get_html(url, params=''):
@@ -64,7 +54,7 @@ def get_html(url, params=''):
     except:
         print('Loadnig ERROR: {}'.format(response))
 
-
+# Сохраняем данные в csv формате
 def save_csv(items, path, titels, encoding='utf-8'):
     with open(path, 'a', newline='', encoding=encoding) as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
@@ -100,7 +90,7 @@ def get_first_edition(items):
 
 
 def edition_first():
-    print('start EDITION FIRST')
+    print('start FIRST PART')
     datas = []
     items = get_html(OPEN_REQ)
     datas.extend(get_first_edition(items))
@@ -119,7 +109,7 @@ def main():
     nifty_second_editions.parse_second_part()
 
     # Парсим мероприятия по каждому nifty
-    nifty_events.main()
+    nifty_events.parse_events()
 
     end = datetime.now()
     total = end - start
