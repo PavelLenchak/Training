@@ -20,6 +20,7 @@ from multiprocessing import cpu_count
 import logging
 import random
 from . import nifty_second_editions
+from . import nifty_events
 
 logging.basicConfig(filename='Parsing\\nifrygateway\\logs.csv', level=logging.INFO)
 
@@ -74,149 +75,6 @@ def save_csv(items, path, titels, encoding='utf-8'):
             writer.writerow(task)
 
 
-def get_events(adress_and_type):
-    proxy = random.choice(PROXIES)
-    main_data = []
-    adress = adress_and_type[0]
-    nifty_type = adress_and_type[1]
-
-    response = requests.post(EVENTS_REQ, proxies={'http': 'http://' + proxy}, data={
-        "contractAddress": adress,
-        "niftyType": nifty_type,
-        "current":1,
-        "size":10,
-        "onlySales":"false",
-    })
-    data = response.json()
-
-    # try:
-    total_pages = data['data']['meta']['page']['total_pages'] + 1
-    print('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
-    for page in range(1, total_pages):
-        response = requests.post(EVENTS_REQ, data={
-            "contractAddress":adress,
-            "niftyType":nifty_type,
-            "current":page,
-            "size":10,
-            "onlySales":"false"})
-        data = response.json()
-
-        try:
-            data_results = data['data']['results']
-        except Exception as e:
-            print(data['detail'][-10])
-            t = data['detail'][-10]
-            print(f'Засыпаем на {t} секунд')
-            sleep(t)
-            get_events([adress, nifty_type])
-            # print(f'Dont find data results {data} {adress} {nifty_type} {page}')
-            # logging.info(f'ERROR Dont find data results {data} {adress} {nifty_type} {page}')
-        else:
-            for d in data_results:
-                #print(d, sep='\n')
-                action = d['Type']
-                id = d['id']
-                time = ''
-                # user1 = ''
-                # user2 = ''
-                user1_id = ''
-                user2_id = ''
-                price = ''
-
-                types = {
-                    'listing': 'put',
-                    'birth': 'has been deposited into Nifty Gateway by',
-                    'offer': 'made a global offer for',
-                    'withdrawal': 'withdrew',
-                    'nifty_transfer': 'sent',
-                    'sale': 'bought',
-                    'bid': 'put on sale',
-                }
-
-                #2013-07-12T07:00:00Z datetime.strptime(date_time_str, '%Y-%m-%d %H:%M:%S.%f')
-                r_time = d['Timestamp'].replace('T', ' ').replace('Z', '')
-                time = datetime.strptime(r_time, '%Y-%m-%d %H:%M:%S.%f')
-                
-                if action == 'offer':
-                    #user1 = d['ListingUserProfile']['name']
-                    #user2 = 'None'
-                    user1_id = d['ListingUserProfile']['id']
-                    price = d['OfferAmountInCents'] * 0.01
-                elif action == 'listing':
-                    id = d['NiftyObject']['id']
-                    token_id = d['NiftyObject']['tokenId']
-                    #user1 = d['ListingUserProfile']['name']
-                    #user2 = 'None'
-                    user1_id = d['ListingUserProfile']['id']
-                    price = d['ListingAmountInCents'] * 0.01
-                elif action == 'birth':
-                    id = d['NiftyObject']['id']
-                    token_id = d['NiftyObject']['tokenId']
-                    #user1 = d['BirthingUserProfile']['name']
-                    #user2 = 'None'
-                    user1_id = d['BirthingUserProfile']['id']
-                elif action == 'withdrawal':
-                    id = d['NiftyObject']['id']
-                    token_id = d['NiftyObject']['tokenId']
-                    #user1 = d['WithdrawingUserProfile']['name']
-                    #user2 = 'None'
-                    user1_id = d['WithdrawingUserProfile']['id']
-                elif action == 'nifty_transfer':
-                    id = d['NiftyObject']['id']
-                    token_id = d['NiftyObject']['tokenId']
-                    #user1 = d['SendingUserProfile']['name']
-                    #user2 = d['ReceivingUserProfile']['name']
-                    user1_id = d['SendingUserProfile']['id']
-                    user2_id = d['ReceivingUserProfile']['id']
-                elif action == 'sale':
-                    id = d['NiftyObject']['id']
-                    token_id = d['NiftyObject']['tokenId']
-                    #user1 = d['SellingUserProfile']['name']
-                    #user2 = d['PurchasingUserProfile']['name']
-                    user1_id = d['SellingUserProfile']['id']
-                    user2_id = d['PurchasingUserProfile']['id']
-                    price = d['SaleAmountInCents'] * 0.01
-                elif action == 'bid':
-                    #user1 = d['BiddingUserProfile']['name']
-                    #user2 = 'None'
-                    user1_id = d['BiddingUserProfile']['id']
-                    price = d['BidAmountInCents'] * 0.01
-                else:
-                    print(f'New action: {action}')
-                    #print(d['BiddingUserProfile'])
-                    #print(d['NiftyObject'])
-                    id = 'None'
-                    token_id = 'NEW ACTION' + action + adress + nifty_type
-                    #user1 = 'None'
-                    #user2 = 'None'
-                    user1_id = 'None'
-                    user2_id = 'None'
-                    price = 'None'
-                    logging.info('NEW ACTION {} - {} {}'.format(action, adress, nifty_type))
-
-
-                main_data.append({
-                    'ID': id,
-                    'Token ID': token_id,
-                    'DateTime': time,
-                    # 'User 1': user1,
-                    # 'User 2': user2,
-                    'User 1 ID': user1_id,
-                    'User 2 ID': user2_id,
-                    'Action': types[action],
-                    'Price': str(price)
-                })
-                titels = list(main_data[0].keys())
-
-    save_csv(main_data, EVENTS_CSV, titels)
-        
-        # for i in main_data:
-        #     print(i)
-
-        # for key, value in data['data']['results'][0].items():
-        #     print(f'{key}: {value}')
-
-
 def get_first_edition(items):
     niftys = []
     for item in items:
@@ -260,15 +118,8 @@ def main():
     # Парсим вторые данные (по каждому nifty)
     nifty_second_editions.parse_second_part()
 
-    # Парсим информацию по историям покупок - продаж
-    # items = get_html(OPEN_REQ)
-    # adress_and_type = get_first_edition(items)
-    # adress_and_type_to_parsing = []
-    # for item in adress_and_type:
-    #     adress_and_type_to_parsing.append([item['Contract Address'], item['Nifty Type']])
-    
-    # with Pool(cpu_count()) as p:
-    #     p.map(get_events, adress_and_type_to_parsing)
+    # Парсим мероприятия по каждому nifty
+    nifty_events.main()
 
     end = datetime.now()
     total = end - start

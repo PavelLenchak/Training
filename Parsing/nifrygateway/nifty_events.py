@@ -64,11 +64,12 @@ def get_events(adress_and_type, start_page=1):
     else:
         data = response.json()
 
-        total_pages = int(data['data']['meta']['page']['total_pages']) + 1
+        total_pages = int(data['data']['meta']['page']['total_pages'])
         print('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
         logging.info('Парсим {} {}. Всего страниц - {}'.format(adress, nifty_type, total_pages))
         
-        for page in range(start_page, total_pages):
+        for page in range(start_page, total_pages+1):
+            print('Парсим {} {}. Страница {}/{}'.format(adress, nifty_type, page, total_pages))
             response = requests.post(EVENTS_REQ, data={
                 "contractAddress":adress,
                 "niftyType":nifty_type,
