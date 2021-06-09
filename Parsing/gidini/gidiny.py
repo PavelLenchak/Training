@@ -15,8 +15,9 @@ import selenium
 from selenium import webdriver
 
 MAIN_DIR = pathlib.Path(__file__).parent
+DIR_TO_SAVE_DOCS = 'D:\Python\__gidini docs'
 
-URL_TO_PARSE = 'https://www.ghidini.it/ProductsList.aspx?lang=en&q=brand,brand_103114'
+URL_TO_PARSE = 'https://www.ghidini.it/ProductsList.aspx?lang=en&q=brand,brand_103113'
 HOST = 'https://www.ghidini.it'
 
 HEADERS = {
@@ -60,6 +61,7 @@ if __name__ == '__main__':
     driver = webdriver.Chrome()
     driver.get(URL_TO_PARSE)
     categories = driver.find_elements_by_class_name('dlab-box dlab-gallery-box fly-box')
+    print(categories)
 # <div class="dlab-box dlab-gallery-box fly-box">
 #         <div class="dlab-media dlab-img-effect">
 #             <a href="ProjectDs.aspx?lang=en&amp;iid=45518" title="University campus">
