@@ -1,7 +1,6 @@
 import json
 import os, pathlib
 from datetime import datetime as dt
-import sys, operator
 
 MAIN_PATH = pathlib.Path(__file__).parent
 
