@@ -10,7 +10,7 @@ file_name = os.path.join(MAIN_PATH, 'operations.json')
 with open(file_name, encoding='utf-8') as f:
     datas = json.load(f)
 
-datas[:] = [d for d in datas if d.get('id')]
+datas[:] = [d for d in datas if d.get('date')]
 datas.sort(key = lambda x: dt.strptime(x['date'], '%Y-%m-%dT%H:%M:%S.%f'))
 
 def mask(s, type = 'card'):
