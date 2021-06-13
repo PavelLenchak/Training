@@ -10,7 +10,6 @@
 
 import os, sys
 import pathlib
-from pathlib import Path
 from time import sleep
 from datetime import datetime
 import requests
@@ -27,10 +26,10 @@ import nifty_second_editions
 MAIN_PATH = pathlib.Path(__file__).parent
 
 # Идентифицирем дебаггер
-logging.basicConfig(filename=f'{MAIN_PATH}\logs.csv', level=logging.INFO)
+logging.basicConfig(filename=os.path.join(MAIN_PATH, 'main_logs.csv'), level=logging.INFO)
 
 # Файлы для сохранения данных
-EDITIONS_F_CSV = f'{MAIN_PATH}\editions_first.csv'
+EDITIONS_F_CSV = os.path.join(MAIN_PATH, 'editions_first.csv')
 
 # OPEN_REQ - запрос на сервер для получения информации о художниках и их коллекций (GET запрос)
 # QUERY_REQ - запрос для получения информации по каждому nifty (GET запрос)
@@ -58,8 +57,6 @@ def get_html(url, params=''):
 def save_csv(items, path, titels, encoding='utf-8'):
     with open(path, 'a', newline='', encoding=encoding) as csv_file:
         writer = csv.writer(csv_file, delimiter=';')
-        #writer.writerow(titels)
-        #print(titels)
         for item in items:
             task = [item[titels[i]] for i in range(len(titels))]
             writer.writerow(task)
@@ -81,11 +78,6 @@ def get_first_edition(items):
                     'Contract Address': nifty['niftyContractAddress'],
                 }
             )
-    #проверяем данные
-    # for nift in niftys:
-    #     print(nift, sep='\n')
-    # for item in items[0]['nifties']:
-    #     print(item['niftyTitle'])
     return niftys
 
 
@@ -105,7 +97,7 @@ def main():
     # Парсим данные по каждому artist
     edition_first()
     
-    # Парсим вторые данные (по каждому nifty)
+    # # Парсим вторые данные (по каждому nifty)
     nifty_second_editions.parse_second_part()
 
     # Парсим мероприятия по каждому nifty

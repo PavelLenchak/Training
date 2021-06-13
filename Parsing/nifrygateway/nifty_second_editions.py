@@ -6,7 +6,7 @@
     Используется метод asyncio
 '''
 
-import pathlib, sys
+import pathlib, sys, os
 import random
 import asyncio
 import logging
@@ -28,9 +28,9 @@ HEADERS = {
 MAIN_PATH = pathlib.Path(__file__).parent
 
 QUERY_REQ= 'https://api.niftygateway.com//already_minted_nifties/?searchQuery=%3Fpage%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:1,%22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D'
-CSV_FILE = f'{MAIN_PATH}\editions_second.csv'
+CSV_FILE = os.path.join(MAIN_PATH, 'editions_second.csv') #f'{MAIN_PATH}\\editions_second.csv'
 
-logging.basicConfig(filename=f'{MAIN_PATH}\logs.csv', level=logging.INFO)
+logging.basicConfig(filename=os.path.join(MAIN_PATH, 'logs.csv'), level=logging.INFO)
 
 
 async def fetch_html(url, session: ClientSession, **kwargs):
@@ -45,7 +45,6 @@ async def fetch_html(url, session: ClientSession, **kwargs):
 async def parse(url, session: ClientSession, **kwargs):
     items = []
     try:
-        # await asyncio.sleep(random.randint(0, 10))
         html = await fetch_html(url=url, session=session, **kwargs)
     except (
         aiohttp.ClientError,
@@ -74,10 +73,8 @@ async def parse(url, session: ClientSession, **kwargs):
 
 
 async def write_one(url, file, sem, **kwargs):
-    # print(f'Parse {url}')
     async with sem:
         datas = await parse(url=url, **kwargs)
-    # logging.info(datas)
     if not datas:
         return None
     titels = list(datas[0].keys())
@@ -87,7 +84,6 @@ async def write_one(url, file, sem, **kwargs):
             task = [item[titels[i]] for i in range(len(titels))]
             await writer.writerow(task)
         print('Записан результат для {}'.format(url[url.find(':',url.find('current')):url.find(',%22size')]))
-        # logging.info(f'Записан результат для {url}')
 
 
 async def parse_and_write(urls, **kwargs):
@@ -119,7 +115,7 @@ def _get_total_pages():
 
 
 def parse_second_part():
-    print('Start SECOND part')
+    print('Start SECOND PART')
     urls = []
     tp = _get_total_pages()
     print("Total pages {}".format(tp))

@@ -6,7 +6,7 @@
     Используется метод multiprocessing
 '''
 
-import sys
+import pathlib, sys, os
 import requests
 import random
 from time import sleep
@@ -15,16 +15,15 @@ import csv
 import logging
 from fake_useragent import UserAgent
 from multiprocessing import Pool, cpu_count
-import pathlib
 
 MAIN_PATH = pathlib.Path(__file__).parent
 
-logging.basicConfig(filename=f'{MAIN_PATH}\logs_events.csv', level=logging.INFO)
+logging.basicConfig(filename=os.path.join(MAIN_PATH, 'logs_events.csv'), level=logging.INFO)
 
 OPEN_REQ = 'https://api.niftygateway.com//exhibition/open/'
 EVENTS_REQ = 'https://api.niftygateway.com//market/nifty-history-by-type/'
 
-EVENTS_CSV = f'{MAIN_PATH}\\events.csv'
+EVENTS_CSV = os.path.join(MAIN_PATH, 'events.csv') #f'{MAIN_PATH}\\events.csv'
 
 HEADERS = {
     'user-agent': UserAgent().chrome
@@ -162,12 +161,12 @@ def get_events(adress_and_type, start_page=1):
                         #user2 = d['PurchasingUserProfile']['name']
                         user1_id = d['SellingUserProfile']['id']
                         user2_id = d['PurchasingUserProfile']['id']
-                        price = d['SaleAmountInCents'] * 0.01
+                        price = str(d['SaleAmountInCents'] * 0.01)
                     elif action == 'bid':
                         #user1 = d['BiddingUserProfile']['name']
                         #user2 = 'None'
                         user1_id = d['BiddingUserProfile']['id']
-                        price = d['BidAmountInCents'] * 0.01
+                        price = str(d['BidAmountInCents'] * 0.01)
                     else:
                         print(f'New action: {action}')
                         #print(d['BiddingUserProfile'])
