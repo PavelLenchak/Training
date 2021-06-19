@@ -9,7 +9,7 @@ MAIN_PATH = pathlib.Path(__file__).parent
 URL_TO_PARSE = 'http://www.naks.ru/assp/reestrperson/'
 HOST = 'http://www.naks.ru'
 
-TEST_MARK = '9LMH'
+TEST_MARK = '9LMH44444'
 
 def filter_naks(driver, type):
     time.sleep(2)
@@ -40,51 +40,40 @@ if __name__ == '__main__':
     filter_naks(driver, type='set')
 
     all_elements = driver.find_element_by_tag_name('strong').text
-    number_of_people = int(all_elements[-1])
-    print(f'Всего найдено элементов {number_of_people}')
+    try:
+        number_of_people = int(all_elements[-1])
+        print(f'Всего найдено элементов {number_of_people}')
+    
+    except ValueError as ve:
+        print(all_elements)
+        driver.close()
+        driver.quit()
+    
+    else:
+        table = driver.find_element_by_class_name('tabl').find_element_by_tag_name('tbody')
+        elems = table.find_elements_by_tag_name('tr')
 
-    table_headers = (
-        'Фамилия, имя, отчество',
-        'Шифр клейма',
-        'Место работы (Организация)',
-        'Должность (Специальность)',
-        'Номер удостоверения',
-        'Доп. Aтт.',
-        'Место аттестации',
-        'Дата аттестации',
-        'Окончание срока действия удостоверения',
-        'Cрок продления',
-        'Вид деятельности',
-        'Область аттестации',
-        'Шифр АЦ - Уровень - Номер',
-        'AЦ',
-        'AП',
-    )
+        welders = {}
 
-    table = driver.find_element_by_class_name('tabl').find_element_by_tag_name('tbody')
-    # elems = table.find_elements_by_tag_name('td')
-    elems = table.find_elements_by_tag_name('tr')
+        count = 1
+        for e in elems[2:]:
+            items = e.text.split('   ')
+            name = f'{count}. {str(items[0].split("  ")[0])}'
+            mark = str(items[0].split('  ')[-1])
 
-    welders = {}
-
-    count = 1
-    for e in elems[2:]:
-        items = e.text.split('   ')
-        name = str(items[0].split('  ')[:-1])
-        mark = str(items[0].split('  ')[-1])
-
-        welders[name] = {
-            'Шифр клейма': mark,
-            'Место работы (Организация)': items[1],
-            'Должность (Специальность)': items[2],
-            'Номер удостоверения': items[3],
-            'Доп. Aтт.': items[4],
-            'AЦ': items[5],
-            'AП': items[6],
-            'Дата аттестации': items[7],
-            'Окончание срока действия удостоверения': items[8],
-            'Cрок продления': items[9],
-            'Вид деятельности': items[10],
-            'Область аттестации': items[11].replae('  подробнее', ''),
-        }
-    print(welders)
+            welders[name] = {
+                'Шифр клейма': mark,
+                'Место работы (Организация)': items[1],
+                'Должность (Специальность)': items[2],
+                'Номер удостоверения': items[3],
+                'Доп. Aтт.': items[4],
+                'AЦ': items[5],
+                'AП': items[6],
+                'Дата аттестации': items[7],
+                'Окончание срока действия удостоверения': items[8],
+                'Cрок продления': items[9],
+                'Вид деятельности': items[10],
+                'Область аттестации': items[11].replace('  подробнее', ''),
+            }
+            count += 1
+        print(welders)
