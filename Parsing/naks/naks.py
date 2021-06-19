@@ -3,13 +3,11 @@ from selenium import webdriver
 import pathlib
 import time
 
-
-
 MAIN_PATH = pathlib.Path(__file__).parent
 URL_TO_PARSE = 'http://www.naks.ru/assp/reestrperson/'
 HOST = 'http://www.naks.ru'
 
-TEST_MARK = '9LMH44444'
+TEST_MARK = '9LMH'
 
 def filter_naks(driver, type):
     time.sleep(2)
@@ -32,6 +30,9 @@ def main():
 
 
 if __name__ == '__main__':
+    options = webdriver.IeOptions
+    options.headless = True
+
     driver = webdriver.Ie()
     driver.get(URL_TO_PARSE)
 
