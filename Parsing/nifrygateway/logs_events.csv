@@ -1,0 +1,19 @@
+WARNING:fake_useragent:Error occurred during loading data. Trying to use cache server https://fake-useragent.herokuapp.com/browsers/0.1.11
+Traceback (most recent call last):
+  File "C:\Users\LENOVO-PC\AppData\Local\Programs\Python\Python38\lib\site-packages\fake_useragent\utils.py", line 154, in load
+    for item in get_browsers(verify_ssl=verify_ssl):
+  File "C:\Users\LENOVO-PC\AppData\Local\Programs\Python\Python38\lib\site-packages\fake_useragent\utils.py", line 99, in get_browsers
+    html = html.split('<table class="w3-table-all notranslate">')[1]
+IndexError: list index out of range
+INFO:root:Program started at 2021-10-22 22:59:12.704697
+INFO:root:Total pages 40971
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:4,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:2,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:1,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:3,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:5,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:9,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:8,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:10,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:6,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D
+INFO:root:Get response 200 for URL: https://api.niftygateway.com//             already_minted_nifties/?searchQuery=%3F             page%3D3%26search%3D%26onSale%3Dfalse&page=%7B%22current%22:7,             %22size%22:20%7D&filters=%7B%7D&sort=%7B%22_score%22:%22desc%22%7D

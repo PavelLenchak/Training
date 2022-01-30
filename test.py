@@ -4,25 +4,17 @@ import numpy as np
 module for testing
 '''
 
-class Character():
-    def __init__(self, race, damage=10):
-        self.race = race
-        self.damage = damage
-        self.health = 100
+from datetime import datetime
+from threading import Timer
 
-    def __str__(self):
-        return "The Character's race is {} and he has {} damage".format(self.race, self.damage)
+x=datetime.today()
+y=x.replace(day=x.day, hour=16, minute=47, second=0, microsecond=0)
+delta_t=y-x
 
-    def hit(self, damage):
-        self.health -= damage
-        return self.health
+secs=delta_t.seconds+1
 
-    def is_dead(self):
-        return self.health <= 0
+def start_prg():
+    print("Start programm")
 
-
-c = Character('Elf')
-
-my_list = [-1,0,4,2,1,2]
-answer = np.median(my_list)
-print(answer)
+t = Timer(secs, start_prg)
+t.start()
